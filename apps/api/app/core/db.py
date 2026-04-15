@@ -1,12 +1,10 @@
 from collections.abc import Generator
 
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
-from sqlalchemy import create_engine
 
 from app.core.config import settings
-
 
 Base = declarative_base()
 

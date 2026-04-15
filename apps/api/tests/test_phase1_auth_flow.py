@@ -1,14 +1,13 @@
 from collections.abc import Generator
 
+import app.main as app_main
+from app.core.db import Base, get_db
+from app.main import app
+from app.models import AuditEvent, SessionToken, User  # noqa: F401
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from app.core.db import Base, get_db
-import app.main as app_main
-from app.main import app
-from app.models import AuditEvent, SessionToken, User  # noqa: F401
 
 
 def _bootstrap_owner(client: TestClient) -> None:

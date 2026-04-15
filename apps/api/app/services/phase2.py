@@ -136,11 +136,7 @@ class Phase2Service:
         elif privacy == "public":
             stmt = stmt.where(Project.is_private.is_(False))
         entities = list(db.scalars(stmt.order_by(Project.created_at.desc())).all())
-        return [
-            item
-            for item in entities
-            if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)
-        ]
+        return [item for item in entities if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)]
 
     @staticmethod
     def get_project(db: Session, actor: User, project_id: str) -> Project:
@@ -206,11 +202,7 @@ class Phase2Service:
         elif privacy == "public":
             stmt = stmt.where(Task.is_private.is_(False))
         entities = list(db.scalars(stmt.order_by(Task.created_at.desc())).all())
-        return [
-            item
-            for item in entities
-            if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)
-        ]
+        return [item for item in entities if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)]
 
     @staticmethod
     def get_task(db: Session, actor: User, task_id: str) -> Task:
@@ -394,8 +386,7 @@ class Phase2Service:
             ).all()
         )
         owner_ids = {
-            user.id
-            for user in db.scalars(select(User).where(User.id.in_([row.owner_user_id for row in rows]), User.role == "owner")).all()
+            user.id for user in db.scalars(select(User).where(User.id.in_([row.owner_user_id for row in rows]), User.role == "owner")).all()
         }
         return [row for row in rows if actor.id == row.owner_user_id or (actor.role == "spouse" and row.owner_user_id in owner_ids)]
 
@@ -410,8 +401,6 @@ class Phase2Service:
             if current_task_id in visited:
                 continue
             visited.add(current_task_id)
-            next_ids = list(
-                db.scalars(select(TaskDependency.depends_on_task_id).where(TaskDependency.task_id == current_task_id)).all()
-            )
+            next_ids = list(db.scalars(select(TaskDependency.depends_on_task_id).where(TaskDependency.task_id == current_task_id)).all())
             frontier.extend(next_ids)
         return False

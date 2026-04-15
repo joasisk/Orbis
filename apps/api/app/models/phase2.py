@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -76,9 +76,7 @@ class Task(Base):
 
 class RecurringCommitment(Base):
     __tablename__ = "recurring_commitments"
-    __table_args__ = (
-        CheckConstraint("cadence IN ('daily','weekly','monthly')", name="ck_recurring_commitments_cadence"),
-    )
+    __table_args__ = (CheckConstraint("cadence IN ('daily','weekly','monthly')", name="ck_recurring_commitments_cadence"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     owner_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

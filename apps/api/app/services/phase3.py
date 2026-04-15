@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -28,9 +28,7 @@ class Phase3Service:
     ) -> DailyPlanResponse:
         all_tasks = list(db.scalars(select(Task)).all())
         visible_tasks = [
-            task
-            for task in all_tasks
-            if Phase2Service._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope)
+            task for task in all_tasks if Phase2Service._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope)
         ]
         candidate_tasks = [task for task in visible_tasks if task.status.lower() not in TERMINAL_TASK_STATUSES]
 
@@ -78,9 +76,7 @@ class Phase3Service:
             raise HTTPException(status_code=404, detail="Task not found")
         if not Phase2Service._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope):
             raise HTTPException(status_code=403, detail="Forbidden")
-        active = db.scalar(
-            select(FocusSession).where(FocusSession.owner_user_id == actor.id, FocusSession.status == "active")
-        )
+        active = db.scalar(select(FocusSession).where(FocusSession.owner_user_id == actor.id, FocusSession.status == "active"))
         if active is not None:
             if active.task_id == task_id:
                 return active
@@ -175,10 +171,7 @@ class Phase3Service:
     @staticmethod
     def _latest_blocker_event(db: Session, session_id: str) -> BlockerEvent:
         event = db.scalar(
-            select(BlockerEvent)
-            .where(BlockerEvent.focus_session_id == session_id)
-            .order_by(BlockerEvent.created_at.desc())
-            .limit(1)
+            select(BlockerEvent).where(BlockerEvent.focus_session_id == session_id).order_by(BlockerEvent.created_at.desc()).limit(1)
         )
         if event is None:
             raise HTTPException(status_code=409, detail="Session is no longer active")
