@@ -1,4 +1,4 @@
-# ADHD OS Starter Repository
+# Orbis
 
 Self-hosted, AI-assisted time and project management system optimized for ADHD users.
 
