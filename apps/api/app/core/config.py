@@ -29,10 +29,7 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         quoted_user = quote(self.postgres_user, safe="")
         quoted_password = quote(self.postgres_password, safe="")
-        return (
-            f"postgresql+psycopg://{quoted_user}:{quoted_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+        return f"postgresql+psycopg://{quoted_user}:{quoted_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
 
 settings = Settings()
