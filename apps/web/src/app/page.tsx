@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { GlassNav, TimeProgressArc } from "@/components/organic-chronos";
 
 export default function HomePage() {
@@ -14,12 +16,12 @@ export default function HomePage() {
               breathing room, and slow transitions.
             </p>
             <div className="button-row">
-              <a href="/projects" className="btn btn-primary">
+              <Link href="/projects" className="btn btn-primary">
                 Open Projects
-              </a>
-              <a href="/tasks" className="btn btn-secondary">
+              </Link>
+              <Link href="/tasks" className="btn btn-secondary">
                 Open Tasks
-              </a>
+              </Link>
             </div>
           </article>
           <aside className="panel">
