@@ -60,6 +60,19 @@ npm run typecheck
 ADR records are stored under `docs/adr/`.
 
 ## Troubleshooting
+- **Proxy returns `502 Bad Gateway` for `/api/*` in local dev**
+  - Verify the API container is running and healthy:
+    ```bash
+    docker compose ps
+    docker compose logs api --tail=200
+    ```
+  - Compose now provides safe defaults for required API/DB env vars, but a stale DB volume with mismatched credentials can still prevent startup.
+  - If credentials changed, reset local data:
+    ```bash
+    docker compose down -v
+    docker compose up --build
+    ```
+
 - **API fails at startup with `password authentication failed for user "orbis"`**
   - If Postgres data already exists, changing `POSTGRES_PASSWORD` in `.env` does not update the existing DB user password.
   - Ensure `.env` credentials match the values used when the `postgres_data` volume was first initialized, or reset local data and recreate containers:
