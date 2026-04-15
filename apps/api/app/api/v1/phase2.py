@@ -164,6 +164,16 @@ def list_recurring_commitments(
     return [RecurringCommitmentRead.model_validate(row, from_attributes=True) for row in rows]
 
 
+@router.get("/recurring-commitments/{commitment_id}", response_model=RecurringCommitmentRead)
+def get_recurring_commitment(
+    commitment_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RecurringCommitmentRead:
+    row = Phase2Service.get_recurring_commitment(db, current_user, commitment_id)
+    return RecurringCommitmentRead.model_validate(row, from_attributes=True)
+
+
 @router.patch("/recurring-commitments/{commitment_id}", response_model=RecurringCommitmentRead)
 def update_recurring_commitment(
     commitment_id: str,
