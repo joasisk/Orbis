@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type OverloadRiskLevel = "low" | "medium" | "high";
 type BlockerReason =
@@ -36,14 +36,9 @@ type FocusSessionResponse = {
   status: "active" | "completed" | "unable";
   started_at: string;
   ended_at: string | null;
-  pre_task_energy: number;
-  post_task_energy: number | null;
-  sidetrack_count: number;
-  sidetrack_note: string | null;
-  unable_reason: string | null;
 };
 
-const defaultApiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 const blockerReasons: Array<{ value: BlockerReason; label: string }> = [
   { value: "unclear_requirement", label: "Unclear requirement" },
@@ -60,7 +55,6 @@ function getAuthHeaders(token: string): Record<string, string> {
 }
 
 export function Phase3Home() {
-  const [apiBase, setApiBase] = useState(defaultApiBase);
   const [token, setToken] = useState("");
   const [currentEnergy, setCurrentEnergy] = useState("5");
   const [plan, setPlan] = useState<DailyPlanResponse | null>(null);
@@ -72,57 +66,79 @@ export function Phase3Home() {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
   const doNowTask = useMemo(() => plan?.primary_recommendation ?? plan?.recommendations[0] ?? null, [plan]);
+
+  useEffect(() => {
+    const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
+    if (localToken) {
+      setToken(localToken);
+    }
+  }, []);
 
   async function loadPlan() {
     setError("");
     setSuccess("");
 
-    const params = new URLSearchParams({ limit: "5" });
-    if (currentEnergy !== "") {
-      params.set("current_energy", currentEnergy);
+    if (!token) {
+      setError("Add an access token to load your plan.");
+      return;
     }
+
+    setIsLoadingPlan(true);
+    const params = new URLSearchParams({ limit: "5", current_energy: currentEnergy });
 
     const response = await fetch(`${apiBase}/planning/daily-plan?${params.toString()}`, {
       cache: "no-store",
-      headers: {
-        ...getAuthHeaders(token),
-      },
+      headers: getAuthHeaders(token),
     });
 
+    setIsLoadingPlan(false);
     if (!response.ok) {
-      setError(`Could not load daily plan (${response.status})`);
+      setError(`Could not load daily plan (${response.status}).`);
       return;
     }
 
     setPlan((await response.json()) as DailyPlanResponse);
-    setSuccess("Daily plan loaded.");
+    setSuccess("Daily plan refreshed.");
   }
 
-  async function startFocus() {
-    if (!doNowTask) {
-      setError("No recommendation available to start.");
-      return;
+  async function callFocusEndpoint(path: string, payload: Record<string, unknown>) {
+    if (!token) {
+      setError("Add an access token to run focus actions.");
+      return null;
     }
 
-    setError("");
-    setSuccess("");
-
-    const response = await fetch(`${apiBase}/focus/start`, {
+    const response = await fetch(`${apiBase}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...getAuthHeaders(token),
       },
-      body: JSON.stringify({
-        task_id: doNowTask.task_id,
-        pre_task_energy: Number(preEnergy),
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      setError(`Could not start focus (${response.status})`);
+      setError(`Action failed on ${path} (${response.status}).`);
+      return null;
+    }
+
+    return response;
+  }
+
+  async function startFocus() {
+    if (!doNowTask) {
+      setError("Load your plan first to pick a recommended task.");
+      return;
+    }
+
+    setError("");
+    const response = await callFocusEndpoint("/focus/start", {
+      task_id: doNowTask.task_id,
+      pre_task_energy: Number(preEnergy),
+    });
+    if (!response) {
       return;
     }
 
@@ -137,28 +153,17 @@ export function Phase3Home() {
     }
 
     setError("");
-    setSuccess("");
-
-    const response = await fetch(`${apiBase}/focus/stop`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(token),
-      },
-      body: JSON.stringify({
-        session_id: activeSession.id,
-        post_task_energy: Number(postEnergy),
-      }),
+    const response = await callFocusEndpoint("/focus/stop", {
+      session_id: activeSession.id,
+      post_task_energy: Number(postEnergy),
     });
-
-    if (!response.ok) {
-      setError(`Could not stop focus (${response.status})`);
+    if (!response) {
       return;
     }
 
     const payload = (await response.json()) as FocusSessionResponse;
-    setActiveSession(payload);
-    setSuccess("Focus session completed.");
+    setActiveSession(payload.status === "active" ? payload : null);
+    setSuccess("Focus session stopped.");
     await loadPlan();
   }
 
@@ -169,23 +174,12 @@ export function Phase3Home() {
     }
 
     setError("");
-    setSuccess("");
-
-    const response = await fetch(`${apiBase}/focus/sidetrack`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(token),
-      },
-      body: JSON.stringify({
-        session_id: activeSession.id,
-        blocker_reason: blockerReason,
-        note: note || null,
-      }),
+    const response = await callFocusEndpoint("/focus/sidetrack", {
+      session_id: activeSession.id,
+      blocker_reason: blockerReason,
+      note: note || null,
     });
-
-    if (!response.ok) {
-      setError(`Could not save sidetrack (${response.status})`);
+    if (!response) {
       return;
     }
 
@@ -198,39 +192,27 @@ export function Phase3Home() {
       setError("No active focus session.");
       return;
     }
-
     if (unableReason.trim().length < 3) {
       setError("Unable reason must be at least 3 characters.");
       return;
     }
 
     setError("");
-    setSuccess("");
-
-    const response = await fetch(`${apiBase}/focus/unable`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(token),
-      },
-      body: JSON.stringify({
-        session_id: activeSession.id,
-        unable_reason: unableReason,
-        blocker_reason: blockerReason,
-        post_task_energy: Number(postEnergy),
-        note: note || null,
-      }),
+    const response = await callFocusEndpoint("/focus/unable", {
+      session_id: activeSession.id,
+      unable_reason: unableReason,
+      blocker_reason: blockerReason,
+      post_task_energy: Number(postEnergy),
+      note: note || null,
     });
-
-    if (!response.ok) {
-      setError(`Could not save unable-to-finish (${response.status})`);
+    if (!response) {
       return;
     }
 
     setSuccess("Unable-to-finish captured.");
+    setActiveSession(null);
     setUnableReason("");
     setNote("");
-    setActiveSession(null);
     await loadPlan();
   }
 
@@ -238,7 +220,6 @@ export function Phase3Home() {
     <>
       <section className="orbit-timeline">
         <h2 className="orbit-section-label">Do now</h2>
-
         <div className="timeline-list">
           <article className="timeline-item timeline-item--active">
             <div className="timeline-item__dot" aria-hidden />
@@ -251,9 +232,9 @@ export function Phase3Home() {
               <p>
                 {doNowTask
                   ? `Score ${doNowTask.score.toFixed(2)} · Status ${doNowTask.status}`
-                  : "Request your plan to see a ranked recommendation and fallback options."}
+                  : "Request your plan to see your current best next task and fallback options."}
               </p>
-              {doNowTask?.reasons?.length ? (
+              {doNowTask?.reasons.length ? (
                 <ul className="orbit-checklist" style={{ marginTop: "0.75rem" }}>
                   {doNowTask.reasons.slice(0, 3).map((reason) => (
                     <li key={reason}>{reason}</li>
@@ -281,10 +262,14 @@ export function Phase3Home() {
 
       <aside className="orbit-panels">
         <section className="orbit-panel">
-          <h2 className="orbit-section-label">Planner controls</h2>
+          <h2 className="orbit-section-label">Daily planning</h2>
           <div className="field-grid">
-            <input className="input-field" value={apiBase} onChange={(e) => setApiBase(e.target.value)} placeholder="API base URL" />
-            <input className="input-field" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Bearer token" />
+            <input
+              className="input-field"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder="Access token"
+            />
             <input
               className="input-field"
               type="number"
@@ -292,20 +277,18 @@ export function Phase3Home() {
               max="10"
               step="0.5"
               value={currentEnergy}
-              onChange={(e) => setCurrentEnergy(e.target.value)}
+              onChange={(event) => setCurrentEnergy(event.target.value)}
               placeholder="Current energy (0-10)"
             />
-            <button className="btn btn-primary" type="button" onClick={loadPlan}>
-              Refresh do-now plan
+            <button className="btn btn-primary" type="button" onClick={loadPlan} disabled={isLoadingPlan}>
+              {isLoadingPlan ? "Loading..." : "Refresh do-now plan"}
             </button>
           </div>
         </section>
 
         <section className="orbit-panel">
           <h2 className="orbit-section-label">Focus actions</h2>
-          <p>
-            Session: {activeSession ? `${activeSession.status} (${activeSession.id.slice(0, 8)})` : "No active session"}
-          </p>
+          <p>Session: {activeSession ? `${activeSession.status} (${activeSession.id.slice(0, 8)})` : "No active session"}</p>
           <div className="field-grid" style={{ marginTop: "0.8rem" }}>
             <input
               className="input-field"
@@ -314,7 +297,7 @@ export function Phase3Home() {
               max="10"
               step="0.5"
               value={preEnergy}
-              onChange={(e) => setPreEnergy(e.target.value)}
+              onChange={(event) => setPreEnergy(event.target.value)}
               placeholder="Pre-task energy"
             />
             <button className="btn btn-primary" type="button" onClick={startFocus}>
@@ -328,7 +311,7 @@ export function Phase3Home() {
               max="10"
               step="0.5"
               value={postEnergy}
-              onChange={(e) => setPostEnergy(e.target.value)}
+              onChange={(event) => setPostEnergy(event.target.value)}
               placeholder="Post-task energy"
             />
             <button className="btn btn-secondary" type="button" onClick={stopFocus}>
@@ -340,7 +323,7 @@ export function Phase3Home() {
         <section className="orbit-panel orbit-panel--warning">
           <h2 className="orbit-section-label">Blocker capture</h2>
           <div className="field-grid">
-            <select className="input-field" value={blockerReason} onChange={(e) => setBlockerReason(e.target.value as BlockerReason)}>
+            <select className="input-field" value={blockerReason} onChange={(event) => setBlockerReason(event.target.value as BlockerReason)}>
               {blockerReasons.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -350,10 +333,10 @@ export function Phase3Home() {
             <input
               className="input-field"
               value={unableReason}
-              onChange={(e) => setUnableReason(e.target.value)}
+              onChange={(event) => setUnableReason(event.target.value)}
               placeholder="Unable reason (required for unable flow)"
             />
-            <textarea className="text-area" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional blocker note" />
+            <textarea className="text-area" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional blocker note" />
             <div className="button-row">
               <button className="btn btn-secondary" type="button" onClick={sidetrack}>
                 Record sidetrack
@@ -375,6 +358,13 @@ export function Phase3Home() {
               <ul className="orbit-checklist">
                 {plan.drivers.map((driver) => (
                   <li key={driver}>{driver}</li>
+                ))}
+              </ul>
+            ) : null}
+            {plan.recommended_reset_actions.length > 0 ? (
+              <ul className="orbit-checklist">
+                {plan.recommended_reset_actions.map((action) => (
+                  <li key={action}>{action}</li>
                 ))}
               </ul>
             ) : null}
