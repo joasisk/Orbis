@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <div className="orbit-page">
@@ -12,26 +14,26 @@ export default function HomePage() {
           </div>
 
           <nav className="orbit-nav" aria-label="Primary">
-            <a className="orbit-nav__item orbit-nav__item--active" href="#">
+            <Link className="orbit-nav__item orbit-nav__item--active" href="/">
               <span className="material-symbols-outlined">calendar_today</span>
               <span>Today</span>
-            </a>
-            <a className="orbit-nav__item" href="#">
+            </Link>
+            <Link className="orbit-nav__item" href="/tasks">
               <span className="material-symbols-outlined">date_range</span>
               <span>Week</span>
-            </a>
-            <a className="orbit-nav__item" href="#">
+            </Link>
+            <Link className="orbit-nav__item" href="/projects">
               <span className="material-symbols-outlined">explore</span>
               <span>Scope</span>
-            </a>
+            </Link>
           </nav>
         </div>
 
         <div className="orbit-sidenav__bottom">
-          <a className="orbit-nav__item" href="#">
+          <Link className="orbit-nav__item" href="/settings">
             <span className="material-symbols-outlined">settings</span>
             <span>Settings</span>
-          </a>
+          </Link>
         </div>
       </aside>
 
