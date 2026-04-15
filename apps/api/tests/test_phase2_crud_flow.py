@@ -66,6 +66,21 @@ def _headers(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def _create_and_login_spouse(client: TestClient, owner_token: str) -> str:
+    spouse_create_response = client.post(
+        "/api/v1/users/spouse",
+        headers=_headers(owner_token),
+        json={"email": "spouse@example.com", "password": "Password123!"},
+    )
+    assert spouse_create_response.status_code == 201
+    spouse_login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "spouse@example.com", "password": "Password123!"},
+    )
+    assert spouse_login_response.status_code == 200
+    return spouse_login_response.json()["access_token"]
+
+
 def test_phase2_crud_and_history_flow() -> None:
     client_gen = _client_with_test_db()
     client = next(client_gen)
@@ -150,6 +165,124 @@ def test_phase2_crud_and_history_flow() -> None:
         events = [row["event_type"] for row in history_resp.json()]
         assert "create" in events
         assert "update" in events
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_phase2_write_authorization_cycle_and_recurring_detail() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        owner_token = _bootstrap_and_token(client)
+        spouse_token = _create_and_login_spouse(client, owner_token)
+        owner_headers = _headers(owner_token)
+        spouse_headers = _headers(spouse_token)
+
+        area_resp = client.post(
+            "/api/v1/areas",
+            headers=owner_headers,
+            json={"name": "Work", "description": "Career planning"},
+        )
+        assert area_resp.status_code == 201
+        area_id = area_resp.json()["id"]
+
+        spouse_areas_resp = client.get("/api/v1/areas", headers=spouse_headers)
+        assert spouse_areas_resp.status_code == 200
+        assert len(spouse_areas_resp.json()) == 1
+        assert spouse_areas_resp.json()[0]["id"] == area_id
+
+        project_resp = client.post(
+            "/api/v1/projects",
+            headers=owner_headers,
+            json={
+                "area_id": area_id,
+                "name": "Promotion prep",
+                "is_private": False,
+                "visibility_scope": "shared",
+            },
+        )
+        assert project_resp.status_code == 201
+        project_id = project_resp.json()["id"]
+
+        spouse_update_project_resp = client.patch(
+            f"/api/v1/projects/{project_id}",
+            headers=spouse_headers,
+            json={"name": "Not allowed"},
+        )
+        assert spouse_update_project_resp.status_code == 403
+
+        spouse_create_project_resp = client.post(
+            "/api/v1/projects",
+            headers=spouse_headers,
+            json={
+                "area_id": area_id,
+                "name": "Spouse unauthorized project",
+                "is_private": False,
+                "visibility_scope": "shared",
+            },
+        )
+        assert spouse_create_project_resp.status_code == 403
+
+        task_a_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={"project_id": project_id, "title": "Task A"},
+        )
+        assert task_a_resp.status_code == 201
+        task_a_id = task_a_resp.json()["id"]
+
+        task_b_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={"project_id": project_id, "title": "Task B"},
+        )
+        assert task_b_resp.status_code == 201
+        task_b_id = task_b_resp.json()["id"]
+
+        dep_resp = client.post(
+            "/api/v1/task-dependencies",
+            headers=owner_headers,
+            json={"task_id": task_b_id, "depends_on_task_id": task_a_id},
+        )
+        assert dep_resp.status_code == 201
+
+        cycle_resp = client.post(
+            "/api/v1/task-dependencies",
+            headers=owner_headers,
+            json={"task_id": task_a_id, "depends_on_task_id": task_b_id},
+        )
+        assert cycle_resp.status_code == 422
+
+        spouse_list_dependencies_resp = client.get("/api/v1/task-dependencies", headers=spouse_headers)
+        assert spouse_list_dependencies_resp.status_code == 200
+        assert len(spouse_list_dependencies_resp.json()) == 1
+
+        recurring_create_resp = client.post(
+            "/api/v1/recurring-commitments",
+            headers=owner_headers,
+            json={
+                "title": "Weekly review",
+                "cadence": "weekly",
+                "interval_count": 1,
+                "starts_on": "2026-04-15T09:00:00Z",
+            },
+        )
+        assert recurring_create_resp.status_code == 201
+        commitment_id = recurring_create_resp.json()["id"]
+
+        recurring_detail_resp = client.get(f"/api/v1/recurring-commitments/{commitment_id}", headers=owner_headers)
+        assert recurring_detail_resp.status_code == 200
+        assert recurring_detail_resp.json()["id"] == commitment_id
+
+        spouse_update_recurring_resp = client.patch(
+            f"/api/v1/recurring-commitments/{commitment_id}",
+            headers=spouse_headers,
+            json={"title": "Not allowed"},
+        )
+        assert spouse_update_recurring_resp.status_code == 403
     finally:
         try:
             next(client_gen)
