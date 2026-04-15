@@ -41,8 +41,16 @@ Phase 2 definition of done:
   - `EntityVersion` (or equivalent history table)
 - Add key fields:
   - privacy fields (`is_private`, `visibility_scope`)
-  - user priority inputs (`priority`, `urgency`, optional `effort_estimate`)
-  - spouse influence inputs (`spouse_influence`, optional rationale)
+  - user priority inputs for both Project and Task:
+    - `priority`
+    - `urgency`
+    - `deadline`
+    - `deadline_type` (`soft` / `hard`)
+  - spouse priority inputs for both Project and Task:
+    - `spouse_priority`
+    - `spouse_urgency`
+    - `spouse_deadline`
+    - `spouse_deadline_type` (`soft` / `hard`)
 - Add relationship constraints:
   - project belongs to area of life
   - task optionally belongs to project
@@ -125,8 +133,8 @@ Phase 2 definition of done:
 - Add create/edit/delete forms for projects and tasks.
 - Include UX inputs for:
   - privacy flags
-  - user priority inputs
-  - spouse influence inputs
+  - user priority inputs (`priority`, `urgency`, `deadline`, `deadline_type`)
+  - spouse priority inputs (`spouse_priority`, `spouse_urgency`, `spouse_deadline`, `spouse_deadline_type`)
   - task dependencies
 - Add basic history/version panel on detail views.
 
@@ -210,8 +218,6 @@ Phase 2 definition of done:
 
 ## Open decisions to unblock implementation
 
-- spouse influence scale definition (range + semantics)
 - privacy visibility matrix (owner/spouse/shared behavior)
 - recurrence expression format (simple cadence vs full RRULE)
 - dependency policy for blocked tasks (strict vs advisory enforcement)
-
