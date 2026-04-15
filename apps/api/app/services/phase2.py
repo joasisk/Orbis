@@ -1,0 +1,348 @@
+from datetime import datetime
+from typing import Any
+
+from fastapi import HTTPException, status
+from sqlalchemy import Select, select
+from sqlalchemy.orm import Session
+
+from app.models.phase2 import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
+from app.models.user import User
+
+
+class Phase2Service:
+    @staticmethod
+    def _jsonable(value: Any) -> Any:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, dict):
+            return {k: Phase2Service._jsonable(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [Phase2Service._jsonable(item) for item in value]
+        return value
+
+    @staticmethod
+    def _can_view(user: User, entity_owner_id: str, is_private: bool, visibility_scope: str | None) -> bool:
+        if user.id == entity_owner_id:
+            return True
+        if is_private:
+            return False
+        if user.role == "spouse" and visibility_scope in {"spouse", "shared"}:
+            return True
+        return False
+
+    @staticmethod
+    def _log_version(
+        db: Session,
+        owner_user_id: str,
+        entity_type: str,
+        entity_id: str,
+        actor_user_id: str,
+        event_type: str,
+        changed_fields: dict[str, Any],
+    ) -> None:
+        if not changed_fields and event_type == "update":
+            return
+        db.add(
+            EntityVersion(
+                owner_user_id=owner_user_id,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                actor_user_id=actor_user_id,
+                event_type=event_type,
+                changed_fields=Phase2Service._jsonable(changed_fields),
+            )
+        )
+
+    @staticmethod
+    def _ensure_owner_or_spouse(user: User, owner_user_id: str) -> None:
+        if user.id == owner_user_id:
+            return
+        if user.role == "spouse":
+            return
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    @staticmethod
+    def create_area(db: Session, actor: User, payload: dict[str, Any]) -> AreaOfLife:
+        entity = AreaOfLife(owner_user_id=actor.id, **payload)
+        db.add(entity)
+        db.flush()
+        Phase2Service._log_version(db, actor.id, "area", entity.id, actor.id, "create", payload)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def list_areas(db: Session, actor: User) -> list[AreaOfLife]:
+        stmt: Select[tuple[AreaOfLife]] = select(AreaOfLife)
+        if actor.role != "owner":
+            stmt = stmt.where(AreaOfLife.owner_user_id == actor.id)
+        return list(db.scalars(stmt.order_by(AreaOfLife.created_at.desc())).all())
+
+    @staticmethod
+    def update_area(db: Session, actor: User, area_id: str, payload: dict[str, Any]) -> AreaOfLife:
+        entity = db.scalar(select(AreaOfLife).where(AreaOfLife.id == area_id))
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Area not found")
+        Phase2Service._ensure_owner_or_spouse(actor, entity.owner_user_id)
+        changes = {}
+        for key, value in payload.items():
+            if getattr(entity, key) != value:
+                changes[key] = {"from": getattr(entity, key), "to": value}
+                setattr(entity, key, value)
+        Phase2Service._log_version(db, entity.owner_user_id, "area", entity.id, actor.id, "update", changes)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def delete_area(db: Session, actor: User, area_id: str) -> None:
+        entity = db.scalar(select(AreaOfLife).where(AreaOfLife.id == area_id))
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Area not found")
+        Phase2Service._ensure_owner_or_spouse(actor, entity.owner_user_id)
+        Phase2Service._log_version(db, entity.owner_user_id, "area", entity.id, actor.id, "delete", {"id": area_id})
+        db.delete(entity)
+        db.commit()
+
+    @staticmethod
+    def create_project(db: Session, actor: User, payload: dict[str, Any]) -> Project:
+        area = db.scalar(select(AreaOfLife).where(AreaOfLife.id == payload["area_id"]))
+        if area is None:
+            raise HTTPException(status_code=404, detail="Area not found")
+        entity = Project(owner_user_id=area.owner_user_id, **payload)
+        db.add(entity)
+        db.flush()
+        Phase2Service._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "create", payload)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def list_projects(db: Session, actor: User, area_id: str | None, status_value: str | None, privacy: str | None) -> list[Project]:
+        stmt: Select[tuple[Project]] = select(Project)
+        if area_id:
+            stmt = stmt.where(Project.area_id == area_id)
+        if status_value:
+            stmt = stmt.where(Project.status == status_value)
+        if privacy == "private":
+            stmt = stmt.where(Project.is_private.is_(True))
+        elif privacy == "public":
+            stmt = stmt.where(Project.is_private.is_(False))
+        entities = list(db.scalars(stmt.order_by(Project.created_at.desc())).all())
+        return [
+            item
+            for item in entities
+            if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)
+        ]
+
+    @staticmethod
+    def get_project(db: Session, actor: User, project_id: str) -> Project:
+        entity = db.scalar(select(Project).where(Project.id == project_id))
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if not Phase2Service._can_view(actor, entity.owner_user_id, entity.is_private, entity.visibility_scope):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return entity
+
+    @staticmethod
+    def update_project(db: Session, actor: User, project_id: str, payload: dict[str, Any]) -> Project:
+        entity = Phase2Service.get_project(db, actor, project_id)
+        changes = {}
+        for key, value in payload.items():
+            if getattr(entity, key) != value:
+                changes[key] = {"from": getattr(entity, key), "to": value}
+                setattr(entity, key, value)
+        Phase2Service._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "update", changes)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def delete_project(db: Session, actor: User, project_id: str) -> None:
+        entity = Phase2Service.get_project(db, actor, project_id)
+        Phase2Service._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "delete", {"id": project_id})
+        db.delete(entity)
+        db.commit()
+
+    @staticmethod
+    def create_task(db: Session, actor: User, payload: dict[str, Any]) -> Task:
+        owner_user_id = actor.id
+        if payload.get("project_id"):
+            project = db.scalar(select(Project).where(Project.id == payload["project_id"]))
+            if project is None:
+                raise HTTPException(status_code=404, detail="Project not found")
+            owner_user_id = project.owner_user_id
+        entity = Task(owner_user_id=owner_user_id, **payload)
+        db.add(entity)
+        db.flush()
+        Phase2Service._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "create", payload)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def list_tasks(
+        db: Session, actor: User, project_id: str | None, status_value: str | None, priority: int | None, privacy: str | None
+    ) -> list[Task]:
+        stmt: Select[tuple[Task]] = select(Task)
+        if project_id:
+            stmt = stmt.where(Task.project_id == project_id)
+        if status_value:
+            stmt = stmt.where(Task.status == status_value)
+        if priority is not None:
+            stmt = stmt.where(Task.priority == priority)
+        if privacy == "private":
+            stmt = stmt.where(Task.is_private.is_(True))
+        elif privacy == "public":
+            stmt = stmt.where(Task.is_private.is_(False))
+        entities = list(db.scalars(stmt.order_by(Task.created_at.desc())).all())
+        return [
+            item
+            for item in entities
+            if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)
+        ]
+
+    @staticmethod
+    def get_task(db: Session, actor: User, task_id: str) -> Task:
+        entity = db.scalar(select(Task).where(Task.id == task_id))
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        if not Phase2Service._can_view(actor, entity.owner_user_id, entity.is_private, entity.visibility_scope):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return entity
+
+    @staticmethod
+    def update_task(db: Session, actor: User, task_id: str, payload: dict[str, Any]) -> Task:
+        entity = Phase2Service.get_task(db, actor, task_id)
+        changes = {}
+        for key, value in payload.items():
+            if getattr(entity, key) != value:
+                changes[key] = {"from": getattr(entity, key), "to": value}
+                setattr(entity, key, value)
+        Phase2Service._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "update", changes)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def delete_task(db: Session, actor: User, task_id: str) -> None:
+        entity = Phase2Service.get_task(db, actor, task_id)
+        Phase2Service._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "delete", {"id": task_id})
+        db.delete(entity)
+        db.commit()
+
+    @staticmethod
+    def create_recurring_commitment(db: Session, actor: User, payload: dict[str, Any]) -> RecurringCommitment:
+        entity = RecurringCommitment(owner_user_id=actor.id, **payload)
+        db.add(entity)
+        db.flush()
+        Phase2Service._log_version(db, actor.id, "recurring_commitment", entity.id, actor.id, "create", payload)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def list_recurring_commitments(db: Session, actor: User) -> list[RecurringCommitment]:
+        return list(
+            db.scalars(select(RecurringCommitment).where(RecurringCommitment.owner_user_id == actor.id)).all()
+        )
+
+    @staticmethod
+    def update_recurring_commitment(db: Session, actor: User, commitment_id: str, payload: dict[str, Any]) -> RecurringCommitment:
+        entity = db.scalar(select(RecurringCommitment).where(RecurringCommitment.id == commitment_id))
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Recurring commitment not found")
+        Phase2Service._ensure_owner_or_spouse(actor, entity.owner_user_id)
+        changes = {}
+        for key, value in payload.items():
+            if getattr(entity, key) != value:
+                changes[key] = {"from": getattr(entity, key), "to": value}
+                setattr(entity, key, value)
+        Phase2Service._log_version(
+            db,
+            entity.owner_user_id,
+            "recurring_commitment",
+            entity.id,
+            actor.id,
+            "update",
+            changes,
+        )
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def delete_recurring_commitment(db: Session, actor: User, commitment_id: str) -> None:
+        entity = db.scalar(select(RecurringCommitment).where(RecurringCommitment.id == commitment_id))
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Recurring commitment not found")
+        Phase2Service._ensure_owner_or_spouse(actor, entity.owner_user_id)
+        Phase2Service._log_version(
+            db,
+            entity.owner_user_id,
+            "recurring_commitment",
+            entity.id,
+            actor.id,
+            "delete",
+            {"id": commitment_id},
+        )
+        db.delete(entity)
+        db.commit()
+
+    @staticmethod
+    def create_task_dependency(db: Session, actor: User, task_id: str, depends_on_task_id: str) -> TaskDependency:
+        task = Phase2Service.get_task(db, actor, task_id)
+        dependency = Phase2Service.get_task(db, actor, depends_on_task_id)
+        if task.id == dependency.id:
+            raise HTTPException(status_code=422, detail="Task cannot depend on itself")
+        entity = TaskDependency(owner_user_id=task.owner_user_id, task_id=task.id, depends_on_task_id=dependency.id)
+        db.add(entity)
+        db.flush()
+        Phase2Service._log_version(
+            db,
+            entity.owner_user_id,
+            "task_dependency",
+            entity.id,
+            actor.id,
+            "create",
+            {"task_id": task.id, "depends_on_task_id": dependency.id},
+        )
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def list_task_dependencies(db: Session, actor: User, task_id: str | None) -> list[TaskDependency]:
+        stmt = select(TaskDependency)
+        if task_id:
+            stmt = stmt.where(TaskDependency.task_id == task_id)
+        return list(db.scalars(stmt.order_by(TaskDependency.created_at.desc())).all())
+
+    @staticmethod
+    def delete_task_dependency(db: Session, actor: User, dependency_id: str) -> None:
+        entity = db.scalar(select(TaskDependency).where(TaskDependency.id == dependency_id))
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Dependency not found")
+        Phase2Service._ensure_owner_or_spouse(actor, entity.owner_user_id)
+        Phase2Service._log_version(
+            db,
+            entity.owner_user_id,
+            "task_dependency",
+            entity.id,
+            actor.id,
+            "delete",
+            {"id": dependency_id},
+        )
+        db.delete(entity)
+        db.commit()
+
+    @staticmethod
+    def get_entity_history(db: Session, actor: User, entity_type: str, entity_id: str) -> list[EntityVersion]:
+        rows = list(
+            db.scalars(
+                select(EntityVersion)
+                .where(EntityVersion.entity_type == entity_type, EntityVersion.entity_id == entity_id)
+                .order_by(EntityVersion.created_at.desc())
+            ).all()
+        )
+        return [row for row in rows if actor.id == row.owner_user_id or actor.role == "spouse"]
