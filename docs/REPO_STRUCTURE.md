@@ -1,7 +1,7 @@
 # Repository Folder Structure
 
 ```text
-adhd-os/
+orbis/
 ├── apps/
 │   ├── api/
 │   │   ├── app/

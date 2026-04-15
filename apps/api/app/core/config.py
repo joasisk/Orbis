@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     api_access_token_expire_minutes: int = Field(default=30, alias="API_ACCESS_TOKEN_EXPIRE_MINUTES")
     api_refresh_token_expire_days: int = Field(default=30, alias="API_REFRESH_TOKEN_EXPIRE_DAYS")
 
-    postgres_db: str = Field(default="adhd_os", alias="POSTGRES_DB")
-    postgres_user: str = Field(default="adhd_os", alias="POSTGRES_USER")
+    postgres_db: str = Field(default="orbis", alias="POSTGRES_DB")
+    postgres_user: str = Field(default="orbis", alias="POSTGRES_USER")
     postgres_password: str = Field(default="change_me", alias="POSTGRES_PASSWORD")
     postgres_host: str = Field(default="db", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
