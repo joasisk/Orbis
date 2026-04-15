@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -6,10 +7,19 @@ from app.api.v1 import router as api_v1_router
 from app.core.config import settings
 from app.core.db import check_db_connection
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    check_db_connection()
+    try:
+        check_db_connection()
+    except RuntimeError as exc:
+        logger.warning(
+            "Database connectivity check failed during startup. "
+            "API process will stay online to avoid proxy 502s while dependencies recover: %s",
+            exc,
+        )
     yield
 
 

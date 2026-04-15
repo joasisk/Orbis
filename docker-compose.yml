@@ -10,8 +10,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - web
-      - api
+      web:
+        condition: service_started
+      api:
+        condition: service_healthy
 
   web:
     image: node:20-alpine
@@ -23,7 +25,7 @@ services:
     volumes:
       - ./apps/web:/app
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost/api/v1}
     depends_on:
       - api
 
@@ -35,22 +37,32 @@ services:
     volumes:
       - ./apps/api:/app
     environment:
-      APP_ENV: ${APP_ENV}
-      APP_NAME: ${APP_NAME}
-      API_SECRET_KEY: ${API_SECRET_KEY}
-      API_ACCESS_TOKEN_EXPIRE_MINUTES: ${API_ACCESS_TOKEN_EXPIRE_MINUTES}
-      API_REFRESH_TOKEN_EXPIRE_DAYS: ${API_REFRESH_TOKEN_EXPIRE_DAYS}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_URL: ${REDIS_URL}
-      CORS_ORIGINS: ${CORS_ORIGINS}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      APP_ENV: ${APP_ENV:-development}
+      APP_NAME: ${APP_NAME:-orbis}
+      API_SECRET_KEY: ${API_SECRET_KEY:-change_me_to_a_long_random_value}
+      API_ACCESS_TOKEN_EXPIRE_MINUTES: ${API_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      API_REFRESH_TOKEN_EXPIRE_DAYS: ${API_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      POSTGRES_DB: ${POSTGRES_DB:-orbis}
+      POSTGRES_USER: ${POSTGRES_USER:-orbis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:3000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   worker:
     image: python:3.12-slim
@@ -60,16 +72,18 @@ services:
     volumes:
       - ./apps/api:/app
     environment:
-      APP_ENV: ${APP_ENV}
-      APP_NAME: ${APP_NAME}
-      API_SECRET_KEY: ${API_SECRET_KEY}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_URL: ${REDIS_URL}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      APP_ENV: ${APP_ENV:-development}
+      APP_NAME: ${APP_NAME:-orbis}
+      API_SECRET_KEY: ${API_SECRET_KEY:-change_me_to_a_long_random_value}
+      POSTGRES_DB: ${POSTGRES_DB:-orbis}
+      POSTGRES_USER: ${POSTGRES_USER:-orbis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     depends_on:
       - db
       - redis
@@ -78,13 +92,18 @@ services:
     image: postgres:16-alpine
     container_name: orbis-db
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-orbis}
+      POSTGRES_USER: ${POSTGRES_USER:-orbis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orbis} -d ${POSTGRES_DB:-orbis}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
