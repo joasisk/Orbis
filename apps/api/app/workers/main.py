@@ -1,9 +1,5 @@
-import time
+"""Worker entrypoint placeholder for background jobs."""
 
-def main():
-    while True:
-        print("worker heartbeat")
-        time.sleep(30)
 
 if __name__ == "__main__":
-    main()
+    print("Orbis worker bootstrap complete. No jobs registered yet.")

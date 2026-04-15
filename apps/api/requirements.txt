@@ -1,11 +1,2 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-alembic
-psycopg[binary]
-pydantic
-pydantic-settings
-python-jose[cryptography]
-passlib[bcrypt]
-redis
-httpx
+fastapi==0.116.1
+uvicorn[standard]==0.35.0

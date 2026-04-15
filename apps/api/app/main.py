@@ -1,11 +1,18 @@
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 
-app = FastAPI(title="ADHD OS API", version="0.1.0")
+app = FastAPI(title="Orbis API", version="0.1.0")
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+api_router = APIRouter(prefix="/api/v1")
 
-@app.get("/api/v1/health")
-def v1_health():
-    return {"status": "ok", "version": "v1"}
+
+@api_router.get("/health", tags=["health"])
+def health_check() -> dict[str, str]:
+    return {"status": "ok", "service": "api"}
+
+
+@app.get("/health", tags=["health"])
+def root_health_check() -> dict[str, str]:
+    return {"status": "ok", "service": "api"}
+
+
+app.include_router(api_router)
