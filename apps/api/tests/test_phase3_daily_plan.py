@@ -12,7 +12,9 @@ from app.main import app
 from app.models import (  # noqa: F401
     AreaOfLife,
     AuditEvent,
+    BlockerEvent,
     EntityVersion,
+    FocusSession,
     Project,
     RecurringCommitment,
     SessionToken,
@@ -126,8 +128,11 @@ def test_daily_plan_hard_deadline_priority_and_dependency_readiness() -> None:
 
         ranking_resp = client.get("/api/v1/planning/daily-plan", headers=headers, params={"limit": 3, "current_energy": 5})
         assert ranking_resp.status_code == 200
-        recommendations = ranking_resp.json()["recommendations"]
+        payload = ranking_resp.json()
+        recommendations = payload["recommendations"]
         assert recommendations[0]["title"] == "Legal filing"
+        assert payload["primary_recommendation"]["task_id"] == recommendations[0]["task_id"]
+        assert len(payload["fallback_recommendations"]) == 2
 
         blocked = next(item for item in recommendations if item["task_id"] == blocked_task_id)
         assert "dependency_not_ready" in blocked["reasons"]

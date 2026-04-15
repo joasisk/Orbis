@@ -1,11 +1,14 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.phase2 import Task, TaskDependency
+from app.models.phase3 import BlockerEvent, FocusSession
 from app.models.user import User
 from app.schemas.phase3 import (
+    BlockerReason,
     DailyPlanRecommendation,
     DailyPlanResponse,
     DailyPlanScoreBreakdown,
@@ -56,14 +59,181 @@ class Phase3Service:
             )
         )
         top = recommendations[:limit]
+        overload = Phase3Service._compute_overload_signals(db, actor)
 
         return DailyPlanResponse(
             generated_at=datetime.now(UTC),
             recommendations=top,
-            overload_risk_level="low",
-            drivers=[],
-            recommended_reset_actions=[],
+            primary_recommendation=top[0] if top else None,
+            fallback_recommendations=top[1:] if len(top) > 1 else [],
+            overload_risk_level=overload["level"],
+            drivers=overload["drivers"],
+            recommended_reset_actions=overload["actions"],
         )
+
+    @staticmethod
+    def start_focus_session(db: Session, actor: User, task_id: str, pre_task_energy: float) -> FocusSession:
+        task = db.scalar(select(Task).where(Task.id == task_id))
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        if not Phase2Service._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        active = db.scalar(
+            select(FocusSession).where(FocusSession.owner_user_id == actor.id, FocusSession.status == "active")
+        )
+        if active is not None:
+            if active.task_id == task_id:
+                return active
+            raise HTTPException(status_code=409, detail="An active focus session already exists")
+
+        session = FocusSession(owner_user_id=actor.id, task_id=task_id, pre_task_energy=pre_task_energy, status="active")
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return session
+
+    @staticmethod
+    def stop_focus_session(db: Session, actor: User, session_id: str, post_task_energy: float) -> FocusSession:
+        session = Phase3Service._owned_session_or_404(db, actor, session_id)
+        if session.status != "active":
+            return session
+        session.status = "completed"
+        session.post_task_energy = post_task_energy
+        session.ended_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(session)
+        return session
+
+    @staticmethod
+    def sidetrack_focus_session(
+        db: Session,
+        actor: User,
+        session_id: str,
+        blocker_reason: BlockerReason,
+        note: str | None,
+    ) -> tuple[FocusSession, BlockerEvent]:
+        session = Phase3Service._owned_session_or_404(db, actor, session_id)
+        if session.status != "active":
+            raise HTTPException(status_code=409, detail="Sidetrack is only valid for an active session")
+
+        event = BlockerEvent(
+            owner_user_id=actor.id,
+            task_id=session.task_id,
+            focus_session_id=session.id,
+            blocker_reason=blocker_reason,
+            note=note,
+        )
+        session.sidetrack_count += 1
+        if note:
+            session.sidetrack_note = note
+        db.add(event)
+        db.commit()
+        db.refresh(session)
+        db.refresh(event)
+        return session, event
+
+    @staticmethod
+    def unable_focus_session(
+        db: Session,
+        actor: User,
+        session_id: str,
+        unable_reason: str,
+        blocker_reason: BlockerReason,
+        post_task_energy: float,
+        note: str | None,
+    ) -> tuple[FocusSession, BlockerEvent]:
+        session = Phase3Service._owned_session_or_404(db, actor, session_id)
+        if session.status != "active":
+            return session, Phase3Service._latest_blocker_event(db, session.id)
+
+        event = BlockerEvent(
+            owner_user_id=actor.id,
+            task_id=session.task_id,
+            focus_session_id=session.id,
+            blocker_reason=blocker_reason,
+            note=note,
+        )
+        session.status = "unable"
+        session.unable_reason = unable_reason
+        session.post_task_energy = post_task_energy
+        session.ended_at = datetime.now(UTC)
+        db.add(event)
+        db.commit()
+        db.refresh(session)
+        db.refresh(event)
+        return session, event
+
+    @staticmethod
+    def _owned_session_or_404(db: Session, actor: User, session_id: str) -> FocusSession:
+        session = db.scalar(select(FocusSession).where(FocusSession.id == session_id))
+        if session is None:
+            raise HTTPException(status_code=404, detail="Focus session not found")
+        if session.owner_user_id != actor.id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return session
+
+    @staticmethod
+    def _latest_blocker_event(db: Session, session_id: str) -> BlockerEvent:
+        event = db.scalar(
+            select(BlockerEvent)
+            .where(BlockerEvent.focus_session_id == session_id)
+            .order_by(BlockerEvent.created_at.desc())
+            .limit(1)
+        )
+        if event is None:
+            raise HTTPException(status_code=409, detail="Session is no longer active")
+        return event
+
+    @staticmethod
+    def _compute_overload_signals(db: Session, actor: User) -> dict[str, list[str] | str]:
+        now = datetime.now(UTC)
+        window_start = now - timedelta(days=7)
+        sessions = list(
+            db.scalars(
+                select(FocusSession).where(
+                    FocusSession.owner_user_id == actor.id,
+                    FocusSession.created_at >= window_start,
+                )
+            ).all()
+        )
+        blockers_count = db.query(BlockerEvent).filter(BlockerEvent.owner_user_id == actor.id).count()
+
+        unable_count = len([s for s in sessions if s.status == "unable"])
+        low_post_energy_count = len([s for s in sessions if s.post_task_energy is not None and s.post_task_energy <= 3])
+        active_count = len([s for s in sessions if s.status == "active"])
+
+        drivers: list[str] = []
+        actions: list[str] = []
+        score = 0
+
+        if unable_count >= 2:
+            score += 2
+            drivers.append("repeated_unable_to_finish")
+            actions.append("choose_one_smaller_task")
+        if blockers_count >= 3:
+            score += 1
+            drivers.append("high_blocker_frequency")
+            actions.append("clear_dependencies_first")
+        if low_post_energy_count >= 2:
+            score += 2
+            drivers.append("persistently_low_post_task_energy")
+            actions.append("schedule_20_min_recovery_break")
+        if active_count > 1:
+            score += 1
+            drivers.append("too_many_open_focus_sessions")
+            actions.append("close_or_stop_current_session")
+
+        if score >= 4:
+            level = "high"
+        elif score >= 2:
+            level = "medium"
+        else:
+            level = "low"
+
+        if level == "low" and not actions:
+            actions = ["keep_current_pace"]
+
+        return {"level": level, "drivers": drivers, "actions": actions}
 
     @staticmethod
     def _score_task(
