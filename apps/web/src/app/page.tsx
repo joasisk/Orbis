@@ -15,7 +15,7 @@ export default function HomePage() {
           </div>
 
           <nav className="orbit-nav" aria-label="Primary">
-            <a className="orbit-nav__item orbit-nav__item--active" href="#">
+            <Link className="orbit-nav__item orbit-nav__item--active" href="/">
               <span className="material-symbols-outlined">calendar_today</span>
               <span>Today</span>
             </a>
@@ -31,10 +31,10 @@ export default function HomePage() {
         </div>
 
         <div className="orbit-sidenav__bottom">
-          <a className="orbit-nav__item" href="#">
+          <Link className="orbit-nav__item" href="/settings">
             <span className="material-symbols-outlined">settings</span>
             <span>Settings</span>
-          </a>
+          </Link>
         </div>
       </aside>
 
