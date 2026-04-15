@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.audit_event import AuditEvent
 from app.models.session import SessionToken
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -75,13 +75,38 @@ class AuthService:
         user = User(
             email=email.lower().strip(),
             hashed_password=AuthService.hash_password(password),
-            role="owner",
+            role=UserRole.OWNER.value,
             is_active=True,
         )
         db.add(user)
         db.flush()
         AuthService._log_event(db, user.id, "auth.bootstrap_owner", {"email": user.email})
         db.commit()
+
+    @staticmethod
+    def create_spouse(db: Session, actor_user: User, email: str, password: str) -> User:
+        normalized_email = email.lower().strip()
+        existing_user = db.scalar(select(User).where(User.email == normalized_email))
+        if existing_user is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+
+        spouse_user = User(
+            email=normalized_email,
+            hashed_password=AuthService.hash_password(password),
+            role=UserRole.SPOUSE.value,
+            is_active=True,
+        )
+        db.add(spouse_user)
+        db.flush()
+        AuthService._log_event(
+            db,
+            actor_user.id,
+            "auth.create_spouse",
+            {"spouse_user_id": spouse_user.id, "email": spouse_user.email},
+        )
+        db.commit()
+        db.refresh(spouse_user)
+        return spouse_user
 
     @staticmethod
     def login(db: Session, email: str, password: str) -> dict[str, str | int]:
