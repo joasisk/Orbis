@@ -18,6 +18,11 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 class AuthService:
     @staticmethod
+    def requires_bootstrap(db: Session) -> bool:
+        existing_user = db.scalar(select(User.id).limit(1))
+        return existing_user is None
+
+    @staticmethod
     def hash_password(password: str) -> str:
         return pwd_context.hash(password)
 
@@ -67,8 +72,7 @@ class AuthService:
 
     @staticmethod
     def bootstrap_owner(db: Session, email: str, password: str) -> None:
-        existing_user = db.scalar(select(User.id).limit(1))
-        if existing_user is not None:
+        if not AuthService.requires_bootstrap(db):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Owner already initialized")
 
         user = User(

@@ -783,3 +783,30 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.app-shell__auth-main {
+  min-height: 100vh;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+}
+
+.auth-card {
+  width: min(32rem, 100%);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  outline: 1px solid var(--outline-ghost);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.auth-field {
+  display: grid;
+  gap: var(--space-xs);
+  font-weight: 600;
+}
