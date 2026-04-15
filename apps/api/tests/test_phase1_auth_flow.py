@@ -114,3 +114,24 @@ def test_phase1_auth_and_role_access() -> None:
             next(client_gen)
         except StopIteration:
             pass
+
+
+def test_bootstrap_status_reflects_claim_state() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+
+    try:
+        pre_bootstrap_response = client.get("/api/v1/auth/bootstrap-status")
+        assert pre_bootstrap_response.status_code == 200
+        assert pre_bootstrap_response.json() == {"requires_bootstrap": True}
+
+        _bootstrap_owner(client)
+
+        post_bootstrap_response = client.get("/api/v1/auth/bootstrap-status")
+        assert post_bootstrap_response.status_code == 200
+        assert post_bootstrap_response.json() == {"requires_bootstrap": False}
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass

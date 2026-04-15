@@ -33,6 +33,11 @@ const navItems: NavItem[] = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
+
+  if (authRoute) {
+    return <main className="app-shell__auth-main">{children}</main>;
+  }
 
   return (
     <div className="app-shell">
