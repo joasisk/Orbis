@@ -58,3 +58,12 @@ npm run typecheck
 
 ## Architecture decisions
 ADR records are stored under `docs/adr/`.
+
+## Troubleshooting
+- **API fails at startup with `password authentication failed for user "orbis"`**
+  - If Postgres data already exists, changing `POSTGRES_PASSWORD` in `.env` does not update the existing DB user password.
+  - Ensure `.env` credentials match the values used when the `postgres_data` volume was first initialized, or reset local data and recreate containers:
+    ```bash
+    docker compose down -v
+    docker compose up --build
+    ```
