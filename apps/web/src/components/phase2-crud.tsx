@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { GlassNav, TimeProgressArc } from "@/components/organic-chronos";
+import { TimeProgressArc } from "@/components/organic-chronos";
 
 type EntityType = "projects" | "tasks";
 
@@ -125,11 +125,8 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
   }, []);
 
   return (
-    <main className="organic-shell">
-      <div className="organic-layout">
-        <GlassNav />
-
-        <section className="organic-grid">
+    <section className="shell-page">
+      <div className="organic-grid">
           <article className="panel panel--focus focus-halo">
             <p className="stamp-label">{entityLabel} atelier</p>
             <h1 className="display-title">{entityLabel} list + create</h1>
@@ -301,9 +298,8 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
               })}
             </ul>
           </aside>
-        </section>
       </div>
-    </main>
+    </section>
   );
 }
 
@@ -338,11 +334,8 @@ export function EntityDetail({ entityType, id }: { entityType: EntityType; id: s
   }, []);
 
   return (
-    <main className="organic-shell">
-      <div className="organic-layout">
-        <GlassNav />
-
-        <section className="organic-grid">
+    <section className="shell-page">
+      <div className="organic-grid">
           <article className="panel panel--focus">
             <p className="stamp-label">detail view</p>
             <h1 className="display-title">{entityType === "projects" ? "Project" : "Task"} detail</h1>
@@ -385,8 +378,7 @@ export function EntityDetail({ entityType, id }: { entityType: EntityType; id: s
               ))}
             </ul>
           </aside>
-        </section>
       </div>
-    </main>
+    </section>
   );
 }

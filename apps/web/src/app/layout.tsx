@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 
 import "./globals.css";
+import { AppShell } from "@/components/app-shell";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -26,7 +27,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body><AppShell>{children}</AppShell></body>
     </html>
   );
 }
