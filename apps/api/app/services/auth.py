@@ -13,7 +13,6 @@ from app.models.audit_event import AuditEvent
 from app.models.session import SessionToken
 from app.models.user import User, UserRole
 
-
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 

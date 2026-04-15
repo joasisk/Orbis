@@ -9,9 +9,7 @@ from app.core.db import Base
 
 class FocusSession(Base):
     __tablename__ = "focus_sessions"
-    __table_args__ = (
-        CheckConstraint("status IN ('active','completed','unable')", name="ck_focus_sessions_status"),
-    )
+    __table_args__ = (CheckConstraint("status IN ('active','completed','unable')", name="ck_focus_sessions_status"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     owner_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

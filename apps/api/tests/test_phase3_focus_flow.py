@@ -1,12 +1,7 @@
 from collections.abc import Generator
 
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.core.db import Base, get_db
 import app.main as app_main
+from app.core.db import Base, get_db
 from app.main import app
 from app.models import (  # noqa: F401
     AreaOfLife,
@@ -21,6 +16,10 @@ from app.models import (  # noqa: F401
     TaskDependency,
     User,
 )
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 def _client_with_test_db() -> Generator[TestClient, None, None]:

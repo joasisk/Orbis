@@ -15,9 +15,7 @@ class UserRole(str, Enum):
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (
-        CheckConstraint("role IN ('owner', 'spouse')", name="ck_users_role_valid"),
-    )
+    __table_args__ = (CheckConstraint("role IN ('owner', 'spouse')", name="ck_users_role_valid"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)

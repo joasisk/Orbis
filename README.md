@@ -37,3 +37,24 @@ Self-hosted, AI-assisted time and project management system optimized for ADHD u
 4. Add weekly planning, reminders, and focus mode
 
 See `docs/IMPLEMENTATION_PLAN.md` and `docs/REQUIREMENTS.md`.
+
+
+## Quality checks
+### API (Python)
+```bash
+cd apps/api
+pip install -r requirements.txt
+ruff check app tests
+ruff format --check app tests
+```
+
+### Web (Next.js)
+```bash
+cd apps/web
+npm ci
+npm run lint
+npm run typecheck
+```
+
+## Architecture decisions
+ADR records are stored under `docs/adr/`.
