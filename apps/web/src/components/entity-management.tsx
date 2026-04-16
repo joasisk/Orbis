@@ -25,7 +25,7 @@ type EntityRecord = {
 const defaultApiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 const getAuthHeaders = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
-const visibilityOptions = ["shared", "owner", "spouse"];
+const visibilityOptions = ["shared", "owner", "spouse"] as const;
 
 export function EntityManagement({ entityType }: { entityType: EntityType }) {
   const [apiBase, setApiBase] = useState(defaultApiBase);
@@ -210,7 +210,7 @@ export function EntityManagement({ entityType }: { entityType: EntityType }) {
                     className={`chip ${form.visibility_scope === option ? "is-selected" : ""}`}
                     onClick={() => setForm({ ...form, visibility_scope: option })}
                   >
-                    {option}
+                    visibility_scope: {option}
                   </button>
                 ))}
                 <button
@@ -218,26 +218,26 @@ export function EntityManagement({ entityType }: { entityType: EntityType }) {
                   className={`chip ${form.is_private ? "is-selected" : ""}`}
                   onClick={() => setForm({ ...form, is_private: !form.is_private })}
                 >
-                  {form.is_private ? "Private" : "Shared"}
+                  is_private: {form.is_private ? "true" : "false"}
                 </button>
               </div>
 
               <div className="row-3">
                 <input
                   className="input-field"
-                  placeholder="Priority"
+                  placeholder="priority"
                   value={form.priority}
                   onChange={(e) => setForm({ ...form, priority: e.target.value })}
                 />
                 <input
                   className="input-field"
-                  placeholder="Urgency"
+                  placeholder="urgency"
                   value={form.urgency}
                   onChange={(e) => setForm({ ...form, urgency: e.target.value })}
                 />
                 <input
                   className="input-field"
-                  placeholder="Deadline ISO"
+                  placeholder="deadline (ISO)"
                   value={form.deadline}
                   onChange={(e) => setForm({ ...form, deadline: e.target.value })}
                 />
@@ -246,19 +246,19 @@ export function EntityManagement({ entityType }: { entityType: EntityType }) {
               <div className="row-3">
                 <input
                   className="input-field"
-                  placeholder="Spouse priority"
+                  placeholder="spouse_priority"
                   value={form.spouse_priority}
                   onChange={(e) => setForm({ ...form, spouse_priority: e.target.value })}
                 />
                 <input
                   className="input-field"
-                  placeholder="Spouse urgency"
+                  placeholder="spouse_urgency"
                   value={form.spouse_urgency}
                   onChange={(e) => setForm({ ...form, spouse_urgency: e.target.value })}
                 />
                 <input
                   className="input-field"
-                  placeholder="Spouse deadline ISO"
+                  placeholder="spouse_deadline (ISO)"
                   value={form.spouse_deadline}
                   onChange={(e) => setForm({ ...form, spouse_deadline: e.target.value })}
                 />
