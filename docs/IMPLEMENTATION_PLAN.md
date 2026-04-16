@@ -151,3 +151,6 @@ Candidates:
 - iOS widgets and notifications
 - richer analytics
 - plugin system evolution
+
+## Detailed schedule/performance extension plan
+- See `docs/SCHEDULE_AND_PERFORMANCE_MODEL_PLAN.md` for DB, API, and web implementation details for explicit weekly/daily schedules and adaptive performance telemetry.
