@@ -96,19 +96,54 @@ Definition of done:
 - proposal can be accepted or edited
 - imported note can generate candidate tasks
 
+## Phase 4.1 — Schedule and performance model extension
+Goal: introduce explicit schedule entities and execution telemetry without reopening completed Phase 3/4 scope.
+
+Deliverables:
+- schedule data model additions (`weekly_schedules`, `daily_schedules`, `daily_schedule_items`)
+- schedule lifecycle and execution endpoints aligned to approval-first behavior
+- telemetry capture for outcomes, time spent, distractions, and mood/energy inputs
+- planner input wiring that consumes new telemetry while preserving approval gates
+
+Definition of done:
+- weekly/day schedule lifecycle works with owner-only accept/reject controls
+- execution telemetry is persisted and available to planner feature assembly
+- web/API contracts for schedule surfaces are stabilized before subsequent UX catch-up work
+
+## Phase 4.5 — Web catch-up and settings UX
+Goal: close MVP usability gaps by wiring existing API capabilities into the day-to-day web experience.
+
+Deliverables:
+- replace static homepage dead-end with API-backed dashboard flows
+- fetch and render Areas of Life, Projects, and Tasks in primary app routes
+- fetch and render `weekly_schedules`/`daily_schedules` (including `proposed` vs `accepted` state) in web UI
+- render `daily_schedule_items` execution telemetry inputs (outcome, actual minutes, distractions) from stabilized Phase 4.1 contracts
+- promote "do now" and focus actions to first-class default navigation path
+- settings interface (owner-focused MVP):
+  - profile/session basics
+  - reminder preferences (within existing MVP reminder scope)
+  - calendar and notes integration connection status/config surface
+  - AI planning controls tied to approval-first guardrails and schedule lifecycle semantics from Phase 4.1
+
+Definition of done:
+- primary web entry route shows live API data (not placeholder/static-only)
+- user can navigate between tasks, daily plan, and weekly schedule context without hidden routes
+- settings page exists and persists configuration through API endpoints
+- no approval gates are bypassed in scheduling/planning interactions
+
 ## Phase 5 — Calendar and reminder integration
 Goal: connect planning to real time and commitments.
 
 Deliverables:
 - one calendar adapter first
 - read external events
-- write scheduled tasks as soft blocks
+- write accepted `daily_schedule_items` as soft calendar blocks (never auto-publish from proposed schedules)
 - reminder scheduling worker
-- adaptive reminder response tracking
+- adaptive reminder response tracking tied to schedule/day-item identifiers for planner feedback reuse
 
 Definition of done:
 - external commitments appear in planning context
-- accepted plan items can create calendar blocks
+- accepted schedule items can create calendar blocks
 - reminders can be delivered and logged
 
 ## Phase 6 — Wife visibility and influence experience
@@ -117,12 +152,12 @@ Goal: support household transparency without losing owner control.
 Deliverables:
 - spouse dashboard view
 - private-item handling
-- visible schedule compression/minimization for low-importance items
+- visible schedule compression/minimization for low-importance items from accepted schedules only
 - influence input UX
 - weighting rules for critical family/household items
 
 Definition of done:
-- spouse sees relevant schedule view
+- spouse sees relevant accepted schedule view
 - private items are hidden properly
 - influence values affect AI planning but do not overwrite owner data
 
@@ -133,7 +168,7 @@ Deliverables:
 - production Dockerfiles
 - backups/export scripts
 - restore workflow
-- observability baseline
+- observability baseline (including schedule lifecycle and day-item telemetry paths introduced in Phase 4.1)
 - rate limiting
 - API key flow for external frontends
 - TrueNAS deployment notes
@@ -154,4 +189,7 @@ Candidates:
 
 ## Detailed schedule/performance extension plan
 - See `docs/SCHEDULE_AND_PERFORMANCE_MODEL_PLAN.md` for DB, API, and web implementation details for explicit weekly/daily schedules and adaptive performance telemetry.
-- The detailed plan now includes a dated rollout schedule (as of 2026-04-16) targeting implementation from 2026-05-04 to 2026-06-12.
+- **When this work happens in the implementation plan:** this extension is tracked as **Phase 4.1**.
+  - Phase 3 and Phase 4 are treated as complete/closed.
+  - Phase 4.1 owns schedule model + telemetry rollout end-to-end.
+  - Before Phase 4.5, Phase 4.1 completes API contract stabilization so web catch-up/settings can consume finalized schedule endpoints.
