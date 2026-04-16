@@ -14,6 +14,7 @@ from app.models import (  # noqa: F401
     NoteExtraction,
     Project,
     RecurringCommitment,
+    ReminderEvent,
     SessionToken,
     Task,
     TaskDependency,
@@ -255,6 +256,70 @@ def test_weekly_schedule_lifecycle_and_daily_item_telemetry() -> None:
         get_day_resp = client.get("/api/v1/schedules/days/2026-04-13", headers=headers)
         assert get_day_resp.status_code == 200
         assert get_day_resp.json()["id"] == monday["id"]
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_reminder_event_capture_and_response_logging() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        token = _bootstrap_and_token(client)
+        headers = _headers(token)
+        _seed_tasks(client, headers)
+
+        proposal_resp = client.post(
+            "/api/v1/planning/weekly-proposals/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13"},
+        )
+        assert proposal_resp.status_code == 200
+        proposal_id = proposal_resp.json()["id"]
+
+        generate_schedule_resp = client.post(
+            "/api/v1/schedules/weeks/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13", "source_proposal_id": proposal_id},
+        )
+        assert generate_schedule_resp.status_code == 200
+        monday = generate_schedule_resp.json()["days"][0]
+        monday_item = monday["items"][0]
+
+        create_reminder_resp = client.post(
+            "/api/v1/reminders/events",
+            headers=headers,
+            json={
+                "daily_schedule_id": monday["id"],
+                "daily_schedule_item_id": monday_item["id"],
+                "delivery_channel": "in_app",
+            },
+        )
+        assert create_reminder_resp.status_code == 200
+        reminder = create_reminder_resp.json()
+        assert reminder["response_status"] == "pending"
+
+        response_resp = client.patch(
+            f"/api/v1/reminders/events/{reminder['id']}/response",
+            headers=headers,
+            json={"response_status": "acknowledged"},
+        )
+        assert response_resp.status_code == 200
+        responded = response_resp.json()
+        assert responded["response_status"] == "acknowledged"
+        assert responded["responded_at"] is not None
+        assert responded["response_delay_seconds"] is not None
+
+        next_proposal_resp = client.post(
+            "/api/v1/planning/weekly-proposals/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-20"},
+        )
+        assert next_proposal_resp.status_code == 200
+        telemetry = next_proposal_resp.json()["evaluation_log"]["telemetry_snapshot"]
+        assert telemetry["reminder_response_count"] >= 1
     finally:
         try:
             next(client_gen)

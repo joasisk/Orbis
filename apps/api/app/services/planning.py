@@ -14,6 +14,7 @@ from app.models.planning import (
     WeeklyPlanProposal,
     WeeklySchedule,
 )
+from app.models.reminder import ReminderEvent
 from app.models.user import User
 from app.schemas.planning import (
     DailyScheduleItemFocusEndRequest,
@@ -472,14 +473,36 @@ class PlanningService:
                 )
             ).all()
         )
+        reminder_rows = list(
+            db.scalars(
+                select(ReminderEvent).where(
+                    ReminderEvent.owner_user_id == actor.id,
+                    ReminderEvent.response_status.in_(["acknowledged", "snoozed", "dismissed"]),
+                )
+            ).all()
+        )
+
+        reminder_response_seconds = [
+            reminder.response_delay_seconds
+            for reminder in reminder_rows
+            if reminder.response_delay_seconds is not None
+        ]
+        reminder_metrics = {
+            "reminder_response_count": len(reminder_rows),
+            "avg_reminder_response_seconds": (
+                sum(reminder_response_seconds) / len(reminder_response_seconds) if reminder_response_seconds else None
+            ),
+        }
+
         if not rows:
-            return {"total_items": 0, "avg_actual_minutes": None, "avg_distraction_count": None}
+            return {"total_items": 0, "avg_actual_minutes": None, "avg_distraction_count": None, **reminder_metrics}
         actual_minutes = [item.actual_minutes for item in rows if item.actual_minutes is not None]
         distractions = [item.distraction_count for item in rows]
         return {
             "total_items": len(rows),
             "avg_actual_minutes": (sum(actual_minutes) / len(actual_minutes)) if actual_minutes else None,
             "avg_distraction_count": sum(distractions) / len(distractions),
+            **reminder_metrics,
         }
 
     @staticmethod

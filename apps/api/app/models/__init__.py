@@ -9,6 +9,7 @@ from app.models.planning import (
     WeeklyPlanProposal,
     WeeklySchedule,
 )
+from app.models.reminder import ReminderEvent
 from app.models.session import SessionToken
 from app.models.user import User
 from app.models.user_settings import UserSettings
@@ -31,5 +32,6 @@ __all__ = [
     "WeeklySchedule",
     "DailySchedule",
     "DailyScheduleItem",
+    "ReminderEvent",
     "UserSettings",
 ]
