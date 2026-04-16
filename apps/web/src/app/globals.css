@@ -375,6 +375,31 @@ a {
   line-height: 1.45;
 }
 
+.app-shell__user-button {
+  display: grid;
+  gap: 0.1rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.app-shell__user-name {
+  font-size: 1.02rem;
+  line-height: 1.35;
+}
+
+.app-shell__user-email {
+  font-size: 0.85rem;
+  color: color-mix(in oklab, var(--on-surface) 62%, transparent);
+}
+
+.app-shell__user-button:disabled {
+  cursor: default;
+}
+
 .app-shell__nav {
   display: grid;
   gap: 0.55rem;
