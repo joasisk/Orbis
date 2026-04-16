@@ -2,6 +2,8 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
@@ -24,6 +26,17 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Orbis API", version="0.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(OperationalError)
+async def database_operational_error_handler(_: object, exc: OperationalError) -> JSONResponse:
+    logger.exception("Database operational error while processing request", exc_info=exc)
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "Database temporarily unavailable. Verify database connectivity and try again.",
+        },
+    )
 
 
 @app.get("/health", tags=["health"])
