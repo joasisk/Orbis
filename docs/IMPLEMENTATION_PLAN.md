@@ -154,3 +154,4 @@ Candidates:
 
 ## Detailed schedule/performance extension plan
 - See `docs/SCHEDULE_AND_PERFORMANCE_MODEL_PLAN.md` for DB, API, and web implementation details for explicit weekly/daily schedules and adaptive performance telemetry.
+- The detailed plan now includes a dated rollout schedule (as of 2026-04-16) targeting implementation from 2026-05-04 to 2026-06-12.

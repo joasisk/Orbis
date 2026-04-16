@@ -175,6 +175,46 @@ Create service layer modules:
 
 ## Delivery plan (phased)
 
+## Updated implementation schedule (as of 2026-04-16)
+This schedule is aligned to the current roadmap ordering where scheduling/focus work is Milestone 2, after auth/core-domain hardening.
+
+### Target window
+- **Start:** 2026-05-04 (first Monday after a 2-week M1 stabilization buffer)
+- **MVP complete for this scope:** 2026-06-12
+- **Total duration:** 6 weeks
+
+### Week-by-week schedule
+- **Week 1 (2026-05-04 -> 2026-05-08): Milestone A foundation**
+  - finalize schema decisions and status state machine
+  - implement migrations and SQLAlchemy models for weekly/daily schedule tables
+  - add DB-level checks/indexes and migration tests
+- **Week 2 (2026-05-11 -> 2026-05-15): Milestone B APIs, part 1**
+  - implement week/day read endpoints and generation/accept/reject service skeletons
+  - implement authorization guards and validation rules
+  - add endpoint contract tests for week/day lifecycle
+- **Week 3 (2026-05-18 -> 2026-05-22): Milestone B APIs, part 2**
+  - implement day-item execution endpoints (`outcome_status`, `actual_minutes`, distractions)
+  - integrate focus-session linkage and blocker signal joins
+  - complete service-level state transition tests
+- **Week 4 (2026-05-25 -> 2026-05-29): Milestone C web app**
+  - build weekly schedule view and accept/reject UX
+  - build daily schedule view and low-friction outcome capture
+  - complete component/integration tests for week/day flows
+- **Week 5 (2026-06-01 -> 2026-06-05): Milestone D AI feedback loop**
+  - map telemetry extraction into planner input features
+  - update prompt/eval logging to include new schedule telemetry signals
+  - add regression tests for planner input assembly
+- **Week 6 (2026-06-08 -> 2026-06-12): hardening and rollout**
+  - run end-to-end QA across DB/API/FE flows
+  - execute backfill (if needed) and production migration rehearsal
+  - ship docs/runbooks and complete DoD checklist
+
+### Go/no-go gates
+- **Gate 1 (end of Week 1):** migration and model design accepted.
+- **Gate 2 (end of Week 3):** API lifecycle and authz fully test-covered.
+- **Gate 3 (end of Week 5):** planner successfully consumes new telemetry without bypassing approval gates.
+- **Release gate (Week 6):** no critical defects in schedule acceptance/execution flows.
+
 ## Milestone A — Database foundation
 - Add schema + migrations + indexes + checks.
 - Add SQLAlchemy models and repository queries.
