@@ -11,6 +11,7 @@ from app.models.planning import (
 )
 from app.models.session import SessionToken
 from app.models.user import User
+from app.models.user_settings import UserSettings
 
 __all__ = [
     "User",
@@ -30,4 +31,5 @@ __all__ = [
     "WeeklySchedule",
     "DailySchedule",
     "DailyScheduleItem",
+    "UserSettings",
 ]
