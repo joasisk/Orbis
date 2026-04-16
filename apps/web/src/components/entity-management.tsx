@@ -7,7 +7,7 @@ import { TimeProgressArc } from "@/components/organic-chronos";
 
 type EntityType = "projects" | "tasks";
 
-type BaseEntity = {
+type EntityRecord = {
   id: string;
   name?: string;
   title?: string;
@@ -27,10 +27,10 @@ const getAuthHeaders = (token: string): Record<string, string> => (token ? { Aut
 
 const visibilityOptions = ["shared", "owner", "spouse"];
 
-export function Phase2Crud({ entityType }: { entityType: EntityType }) {
+export function EntityManagement({ entityType }: { entityType: EntityType }) {
   const [apiBase, setApiBase] = useState(defaultApiBase);
   const [token, setToken] = useState("");
-  const [rows, setRows] = useState<BaseEntity[]>([]);
+  const [entities, setEntities] = useState<EntityRecord[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -56,7 +56,7 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
 
   const endpoint = useMemo(() => `${apiBase}/${entityType}`, [apiBase, entityType]);
 
-  async function fetchRows() {
+  async function loadEntities() {
     setError("");
     try {
       const response = await fetch(endpoint, {
@@ -66,8 +66,8 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
       if (!response.ok) {
         throw new Error(`${response.status} ${response.statusText}`);
       }
-      const payload = (await response.json()) as BaseEntity[];
-      setRows(payload);
+      const payload = (await response.json()) as EntityRecord[];
+      setEntities(payload);
     } catch (err) {
       setError(`Could not load ${entityType}: ${err instanceof Error ? err.message : "unknown error"}`);
     }
@@ -116,11 +116,11 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
     }
 
     setSuccess(`${entityLabel} created.`);
-    await fetchRows();
+    await loadEntities();
   }
 
   useEffect(() => {
-    fetchRows();
+    loadEntities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -265,7 +265,7 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
               </div>
 
               <div className="button-row">
-                <button onClick={fetchRows} className="btn btn-secondary" type="button">
+                <button onClick={loadEntities} className="btn btn-secondary" type="button">
                   Refresh list
                 </button>
                 <button type="submit" className="btn btn-primary">
@@ -281,17 +281,17 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
           <aside className="panel">
             <p className="stamp-label">Live cadence</p>
             <h2 className="headline">Focus arc</h2>
-            <TimeProgressArc progress={0.35 + Math.min(rows.length, 10) * 0.05} />
+            <TimeProgressArc progress={0.35 + Math.min(entities.length, 10) * 0.05} />
             <ul className="list">
-              {rows.map((row) => {
-                const text = entityType === "projects" ? row.name : row.title;
+              {entities.map((entity) => {
+                const text = entityType === "projects" ? entity.name : entity.title;
                 return (
-                  <li key={row.id} className="list-item">
-                    <Link href={`/${entityType}/${row.id}`}>
+                  <li key={entity.id} className="list-item">
+                    <Link href={`/${entityType}/${entity.id}`}>
                       <strong>{text}</strong>
                     </Link>
                     <p className="body-copy">
-                      {row.status} · priority {row.priority ?? "n/a"} · {row.visibility_scope}
+                      {entity.status} · priority {entity.priority ?? "n/a"} · {entity.visibility_scope}
                     </p>
                   </li>
                 );
@@ -303,10 +303,10 @@ export function Phase2Crud({ entityType }: { entityType: EntityType }) {
   );
 }
 
-export function EntityDetail({ entityType, id }: { entityType: EntityType; id: string }) {
+export function EntityDetailView({ entityType, id }: { entityType: EntityType; id: string }) {
   const [apiBase, setApiBase] = useState(defaultApiBase);
   const [token, setToken] = useState("");
-  const [entity, setEntity] = useState<BaseEntity | null>(null);
+  const [entity, setEntity] = useState<EntityRecord | null>(null);
   const [history, setHistory] = useState<Array<{ event_type: string; created_at: string }>>([]);
   const [error, setError] = useState("");
 
@@ -324,7 +324,7 @@ export function EntityDetail({ entityType, id }: { entityType: EntityType; id: s
       return;
     }
 
-    setEntity((await entityRes.json()) as BaseEntity);
+    setEntity((await entityRes.json()) as EntityRecord);
     setHistory(historyRes.ok ? ((await historyRes.json()) as Array<{ event_type: string; created_at: string }>) : []);
   }
 
