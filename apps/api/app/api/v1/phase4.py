@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -5,12 +7,19 @@ from app.core.db import get_db
 from app.core.security import require_roles
 from app.models.user import User
 from app.schemas.phase4 import (
+    DailyScheduleItemFocusEndRequest,
+    DailyScheduleItemFocusStartRequest,
+    DailyScheduleItemPatchRequest,
+    DailySchedulePatchRequest,
+    DailyScheduleResponse,
     NoteExtractionDecisionRequest,
     NoteExtractionPreviewRequest,
     NoteExtractionResponse,
     WeeklyPlanApproveRequest,
     WeeklyPlanGenerateRequest,
     WeeklyPlanProposalResponse,
+    WeeklyScheduleGenerateRequest,
+    WeeklyScheduleResponse,
 )
 from app.services.phase4 import Phase4Service, default_week_start
 
@@ -79,3 +88,95 @@ def decide_note_extraction(
     current_user: User = Depends(require_roles("owner")),
 ) -> NoteExtractionResponse:
     return Phase4Service.decide_note_extraction(db=db, actor=current_user, extraction_id=extraction_id, payload=payload)
+
+
+@router.post("/schedules/weeks/generate", response_model=WeeklyScheduleResponse)
+def generate_weekly_schedule(
+    payload: WeeklyScheduleGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> WeeklyScheduleResponse:
+    return Phase4Service.generate_weekly_schedule(db=db, actor=current_user, payload=payload)
+
+
+@router.get("/schedules/weeks/{week_start_date}", response_model=WeeklyScheduleResponse)
+def get_weekly_schedule(
+    week_start_date: date, db: Session = Depends(get_db), current_user: User = Depends(require_roles("owner"))
+) -> WeeklyScheduleResponse:
+    return Phase4Service.get_weekly_schedule_by_date(db=db, actor=current_user, week_start_date=week_start_date)
+
+
+@router.post("/schedules/weeks/{weekly_schedule_id}/accept", response_model=WeeklyScheduleResponse)
+def accept_weekly_schedule(
+    weekly_schedule_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> WeeklyScheduleResponse:
+    return Phase4Service.accept_weekly_schedule(db=db, actor=current_user, weekly_schedule_id=weekly_schedule_id)
+
+
+@router.post("/schedules/weeks/{weekly_schedule_id}/reject", response_model=WeeklyScheduleResponse)
+def reject_weekly_schedule(
+    weekly_schedule_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> WeeklyScheduleResponse:
+    return Phase4Service.reject_weekly_schedule(db=db, actor=current_user, weekly_schedule_id=weekly_schedule_id)
+
+
+@router.get("/schedules/days/{schedule_date}", response_model=DailyScheduleResponse)
+def get_daily_schedule(
+    schedule_date: date, db: Session = Depends(get_db), current_user: User = Depends(require_roles("owner"))
+) -> DailyScheduleResponse:
+    return Phase4Service.get_daily_schedule_by_date(db=db, actor=current_user, schedule_date=schedule_date)
+
+
+@router.post("/schedules/days/{daily_schedule_id}/accept", response_model=DailyScheduleResponse)
+def accept_daily_schedule(
+    daily_schedule_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> DailyScheduleResponse:
+    return Phase4Service.accept_daily_schedule(db=db, actor=current_user, daily_schedule_id=daily_schedule_id)
+
+
+@router.patch("/schedules/days/{daily_schedule_id}", response_model=DailyScheduleResponse)
+def patch_daily_schedule(
+    daily_schedule_id: str,
+    payload: DailySchedulePatchRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> DailyScheduleResponse:
+    return Phase4Service.patch_daily_schedule(db=db, actor=current_user, daily_schedule_id=daily_schedule_id, payload=payload)
+
+
+@router.patch("/schedules/day-items/{daily_schedule_item_id}", response_model=DailyScheduleResponse)
+def patch_daily_schedule_item(
+    daily_schedule_item_id: str,
+    payload: DailyScheduleItemPatchRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> DailyScheduleResponse:
+    return Phase4Service.patch_daily_schedule_item(
+        db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload
+    )
+
+
+@router.post("/schedules/day-items/{daily_schedule_item_id}/start-focus", response_model=DailyScheduleResponse)
+def start_day_item_focus(
+    daily_schedule_item_id: str,
+    payload: DailyScheduleItemFocusStartRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> DailyScheduleResponse:
+    return Phase4Service.start_day_item_focus(db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload)
+
+
+@router.post("/schedules/day-items/{daily_schedule_item_id}/end-focus", response_model=DailyScheduleResponse)
+def end_day_item_focus(
+    daily_schedule_item_id: str,
+    payload: DailyScheduleItemFocusEndRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> DailyScheduleResponse:
+    return Phase4Service.end_day_item_focus(db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload)

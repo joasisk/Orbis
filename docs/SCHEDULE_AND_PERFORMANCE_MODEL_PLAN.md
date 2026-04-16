@@ -93,6 +93,33 @@ Constraints/indexes:
 3. Add compatibility views/helpers if needed by existing endpoints.
 4. Drop deprecated behavior only after API/FE migration complete.
 
+## 4) As-built verification snapshot (2026-04-16)
+This section tracks what is now implemented so the data model documentation matches the current API/database contract.
+
+Implemented in code/migration:
+- `weekly_schedules` exists with:
+  - unique (`owner_user_id`, `week_start_date`)
+  - status constraint `proposed|accepted|rejected`
+  - optional `source_proposal_id` linkage to `weekly_plan_proposals`
+- `daily_schedules` exists with:
+  - unique (`weekly_schedule_id`, `schedule_date`)
+  - status constraint `proposed|accepted|adjusted`
+  - mood/energy validation checks (`mood_score` 1..5, energy 0..1)
+- `daily_schedule_items` exists with:
+  - unique (`daily_schedule_id`, `order_index`)
+  - outcome constraint `planned|done|postponed|failed|partial|skipped`
+  - postponed-date consistency check (required when postponed, null otherwise)
+  - telemetry fields (`actual_minutes`, `distraction_count`, `distraction_notes`, `failure_reason`)
+
+Implemented API lifecycle alignment:
+- Week schedule endpoints: generate/read/accept/reject.
+- Day schedule endpoints: read/accept/patch (mood/energy/self-evaluation).
+- Day-item endpoints: telemetry patch + focus start/end hooks.
+- Owner-only control remains enforced for acceptance/rejection flows.
+
+Known MVP note:
+- Daily active-plan uniqueness by owner/date for accepted/adjusted plans is currently enforced by the single weekly-schedule-per-owner/week strategy plus per-week/day uniqueness, rather than a partial index.
+
 ---
 
 ## Backend/API plan
