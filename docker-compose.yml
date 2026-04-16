@@ -16,7 +16,12 @@ services:
         condition: service_healthy
 
   web:
-    image: node:20-alpine
+    build:
+      context: ./apps/web
+      dockerfile_inline: |
+        FROM node:20-alpine
+        WORKDIR /app
+    image: orbis-web:dev
     container_name: orbis-web
     working_dir: /app
     command: sh -c "corepack enable && npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
@@ -26,11 +31,28 @@ services:
       - ./apps/web:/app
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost/api/v1}
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/web
+          target: /app
+          ignore:
+            - node_modules/
+            - .next/
+        - action: rebuild
+          path: ./apps/web/package.json
+        - action: rebuild
+          path: ./apps/web/package-lock.json
     depends_on:
       - api
 
   api:
-    image: python:3.12-slim
+    build:
+      context: ./apps/api
+      dockerfile_inline: |
+        FROM python:3.12-slim
+        WORKDIR /app
+    image: orbis-api:dev
     container_name: orbis-api
     working_dir: /app
     command: sh -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
@@ -63,9 +85,21 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api
+          target: /app
+        - action: rebuild
+          path: ./apps/api/requirements.txt
 
   worker:
-    image: python:3.12-slim
+    build:
+      context: ./apps/api
+      dockerfile_inline: |
+        FROM python:3.12-slim
+        WORKDIR /app
+    image: orbis-worker:dev
     container_name: orbis-worker
     working_dir: /app
     command: sh -c "pip install -r requirements.txt && python -m app.workers.main"
@@ -87,6 +121,13 @@ services:
     depends_on:
       - db
       - redis
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api
+          target: /app
+        - action: rebuild
+          path: ./apps/api/requirements.txt
 
   db:
     image: postgres:16-alpine
