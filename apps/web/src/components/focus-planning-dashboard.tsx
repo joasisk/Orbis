@@ -54,7 +54,7 @@ function getAuthHeaders(token: string): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export function Phase3Home() {
+export function FocusPlanningDashboard() {
   const [token, setToken] = useState("");
   const [currentEnergy, setCurrentEnergy] = useState("5");
   const [plan, setPlan] = useState<DailyPlanResponse | null>(null);

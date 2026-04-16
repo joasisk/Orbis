@@ -1,5 +1,5 @@
-import { Phase2Crud } from "@/components/phase2-crud";
+import { EntityManagement } from "@/components/entity-management";
 
 export default function ProjectsPage() {
-  return <Phase2Crud entityType="projects" />;
+  return <EntityManagement entityType="projects" />;
 }
