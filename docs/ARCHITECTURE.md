@@ -50,3 +50,6 @@ API-first architecture so web, mobile, and third-party frontends all consume the
 - REST for MVP
 - GraphQL after schema stabilizes
 - webhooks/events after core entity lifecycle is stable
+
+## Data model reference
+- See `docs/DATA_MODELS.md` for current implemented entities/relationships and planned schedule-model extensions.

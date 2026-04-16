@@ -11,7 +11,7 @@ Self-hosted, AI-assisted time and project management system optimized for ADHD u
 - Deployment: Docker Compose / TrueNAS Custom App compatible layout
 
 ## What's in this repo
-- `docs/` project requirements, architecture, implementation plan, AI agent guidance
+- `docs/` project requirements, architecture, data models, implementation plan, AI agent guidance
 - `apps/api/` FastAPI bootstrap with health endpoints and worker entrypoint
 - `apps/web/` Next.js bootstrap with home page and health route
 - `infra/` local deployment and reverse proxy config
@@ -36,7 +36,7 @@ Self-hosted, AI-assisted time and project management system optimized for ADHD u
 3. Build web shell and login
 4. Add weekly planning, reminders, and focus mode
 
-See `docs/IMPLEMENTATION_PLAN.md` and `docs/REQUIREMENTS.md`.
+See `docs/IMPLEMENTATION_PLAN.md`, `docs/REQUIREMENTS.md`, and `docs/DATA_MODELS.md`.
 
 
 ## Quality checks
