@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
@@ -37,6 +37,15 @@ async def database_operational_error_handler(_: object, exc: OperationalError) -
             "detail": "Database temporarily unavailable. Verify database connectivity and try again.",
         },
     )
+
+
+@app.exception_handler(ProgrammingError)
+async def database_programming_error_handler(_: object, exc: ProgrammingError) -> JSONResponse:
+    logger.exception("Database programming error while processing request", exc_info=exc)
+    detail = "Database query failed. Verify schema migrations are applied and try again."
+    if "UndefinedTable" in str(getattr(exc, "orig", "")) or 'relation "users" does not exist' in str(exc):
+        detail = "Database schema is not initialized. Run migrations (e.g., `alembic upgrade head`) and try again."
+    return JSONResponse(status_code=503, content={"detail": detail})
 
 
 @app.get("/health", tags=["health"])
