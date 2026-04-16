@@ -96,6 +96,20 @@ Definition of done:
 - proposal can be accepted or edited
 - imported note can generate candidate tasks
 
+## Phase 4.1 — Schedule and performance model extension
+Goal: introduce explicit schedule entities and execution telemetry without reopening completed Phase 3/4 scope.
+
+Deliverables:
+- schedule data model additions (`weekly_schedules`, `daily_schedules`, `daily_schedule_items`)
+- schedule lifecycle and execution endpoints aligned to approval-first behavior
+- telemetry capture for outcomes, time spent, distractions, and mood/energy inputs
+- planner input wiring that consumes new telemetry while preserving approval gates
+
+Definition of done:
+- weekly/day schedule lifecycle works with owner-only accept/reject controls
+- execution telemetry is persisted and available to planner feature assembly
+- web/API contracts for schedule surfaces are stabilized before subsequent UX catch-up work
+
 ## Phase 4.5 — Web catch-up and settings UX
 Goal: close MVP usability gaps by wiring existing API capabilities into the day-to-day web experience.
 
@@ -174,4 +188,7 @@ Candidates:
 
 ## Detailed schedule/performance extension plan
 - See `docs/SCHEDULE_AND_PERFORMANCE_MODEL_PLAN.md` for DB, API, and web implementation details for explicit weekly/daily schedules and adaptive performance telemetry.
-- The detailed plan now includes a dated rollout schedule (as of 2026-04-16) targeting implementation from 2026-05-04 to 2026-06-12.
+- **When this work happens in the implementation plan:** this extension is tracked as **Phase 4.1**.
+  - Phase 3 and Phase 4 are treated as complete/closed.
+  - Phase 4.1 owns schedule model + telemetry rollout end-to-end.
+  - Before Phase 4.5, Phase 4.1 completes API contract stabilization so web catch-up/settings can consume finalized schedule endpoints.
