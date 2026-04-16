@@ -4,9 +4,9 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.phase2 import Task
-from app.models.phase3 import FocusSession
-from app.models.phase4 import (
+from app.models.domain import Task
+from app.models.focus import FocusSession
+from app.models.planning import (
     DailySchedule,
     DailyScheduleItem,
     NoteExtraction,
@@ -15,7 +15,7 @@ from app.models.phase4 import (
     WeeklySchedule,
 )
 from app.models.user import User
-from app.schemas.phase4 import (
+from app.schemas.planning import (
     DailyScheduleItemFocusEndRequest,
     DailyScheduleItemFocusStartRequest,
     DailyScheduleItemPatchRequest,
@@ -36,7 +36,7 @@ from app.services.ai import PROMPT_TEMPLATE_VERSION, get_default_provider
 TERMINAL_TASK_STATUSES = {"done", "completed", "cancelled", "archived"}
 
 
-class Phase4Service:
+class PlanningService:
     @staticmethod
     def generate_weekly_proposal(db: Session, actor: User, payload: WeeklyPlanGenerateRequest) -> WeeklyPlanProposalResponse:
         provider = get_default_provider()
@@ -61,7 +61,7 @@ class Phase4Service:
                 "candidate_task_count": len(candidates),
                 "proposed_item_count": len(suggestions),
                 "generated_at": datetime.now(UTC).isoformat(),
-                "telemetry_snapshot": Phase4Service.planner_telemetry_snapshot(db, actor),
+                "telemetry_snapshot": PlanningService.planner_telemetry_snapshot(db, actor),
             },
         )
         db.add(proposal)
@@ -86,7 +86,7 @@ class Phase4Service:
         for item in items:
             db.refresh(item)
 
-        return Phase4Service._proposal_response(proposal, items)
+        return PlanningService._proposal_response(proposal, items)
 
     @staticmethod
     def get_latest_weekly_proposal(db: Session, actor: User) -> WeeklyPlanProposalResponse:
@@ -106,7 +106,7 @@ class Phase4Service:
                 .order_by(WeeklyPlanItem.rank.asc(), WeeklyPlanItem.created_at.asc())
             ).all()
         )
-        return Phase4Service._proposal_response(proposal, items)
+        return PlanningService._proposal_response(proposal, items)
 
     @staticmethod
     def approve_weekly_proposal(
@@ -144,7 +144,7 @@ class Phase4Service:
         for item in items:
             db.refresh(item)
 
-        return Phase4Service._proposal_response(proposal, items)
+        return PlanningService._proposal_response(proposal, items)
 
     @staticmethod
     def preview_note_extraction(
@@ -168,7 +168,7 @@ class Phase4Service:
         db.add(extraction)
         db.commit()
         db.refresh(extraction)
-        return Phase4Service._extraction_response(extraction)
+        return PlanningService._extraction_response(extraction)
 
     @staticmethod
     def decide_note_extraction(
@@ -183,14 +183,14 @@ class Phase4Service:
         if extraction.owner_user_id != actor.id:
             raise HTTPException(status_code=403, detail="Forbidden")
         if extraction.status != "proposed":
-            return Phase4Service._extraction_response(extraction)
+            return PlanningService._extraction_response(extraction)
 
         if payload.decision == "dismiss":
             extraction.status = "dismissed"
             extraction.reviewed_at = datetime.now(UTC)
             db.commit()
             db.refresh(extraction)
-            return Phase4Service._extraction_response(extraction)
+            return PlanningService._extraction_response(extraction)
 
         for index in payload.selected_indices:
             if index < 0 or index >= len(extraction.candidate_tasks):
@@ -214,7 +214,7 @@ class Phase4Service:
         ]
         db.commit()
         db.refresh(extraction)
-        return Phase4Service._extraction_response(extraction)
+        return PlanningService._extraction_response(extraction)
 
     @staticmethod
     def _proposal_response(proposal: WeeklyPlanProposal, items: list[WeeklyPlanItem]) -> WeeklyPlanProposalResponse:
@@ -267,7 +267,7 @@ class Phase4Service:
         if existing is not None:
             raise HTTPException(status_code=409, detail="Weekly schedule already exists for week_start_date")
 
-        source_proposal = Phase4Service._resolve_source_proposal(db, actor, payload.source_proposal_id, payload.week_start_date)
+        source_proposal = PlanningService._resolve_source_proposal(db, actor, payload.source_proposal_id, payload.week_start_date)
         proposal_items = list(
             db.scalars(
                 select(WeeklyPlanItem)
@@ -314,7 +314,7 @@ class Phase4Service:
             )
 
         db.commit()
-        return Phase4Service.get_weekly_schedule_by_date(db=db, actor=actor, week_start_date=payload.week_start_date)
+        return PlanningService.get_weekly_schedule_by_date(db=db, actor=actor, week_start_date=payload.week_start_date)
 
     @staticmethod
     def get_weekly_schedule_by_date(db: Session, actor: User, week_start_date: date) -> WeeklyScheduleResponse:
@@ -326,13 +326,13 @@ class Phase4Service:
         )
         if weekly_schedule is None:
             raise HTTPException(status_code=404, detail="Weekly schedule not found")
-        return Phase4Service._weekly_schedule_response(db, weekly_schedule)
+        return PlanningService._weekly_schedule_response(db, weekly_schedule)
 
     @staticmethod
     def accept_weekly_schedule(db: Session, actor: User, weekly_schedule_id: str) -> WeeklyScheduleResponse:
-        weekly_schedule = Phase4Service._owned_weekly_schedule_or_404(db, actor, weekly_schedule_id)
+        weekly_schedule = PlanningService._owned_weekly_schedule_or_404(db, actor, weekly_schedule_id)
         if weekly_schedule.status == "accepted":
-            return Phase4Service._weekly_schedule_response(db, weekly_schedule)
+            return PlanningService._weekly_schedule_response(db, weekly_schedule)
         if weekly_schedule.status == "rejected":
             raise HTTPException(status_code=409, detail="Rejected schedules cannot be accepted")
         weekly_schedule.status = "accepted"
@@ -343,17 +343,17 @@ class Phase4Service:
                 day.status = "accepted"
         db.commit()
         db.refresh(weekly_schedule)
-        return Phase4Service._weekly_schedule_response(db, weekly_schedule)
+        return PlanningService._weekly_schedule_response(db, weekly_schedule)
 
     @staticmethod
     def reject_weekly_schedule(db: Session, actor: User, weekly_schedule_id: str) -> WeeklyScheduleResponse:
-        weekly_schedule = Phase4Service._owned_weekly_schedule_or_404(db, actor, weekly_schedule_id)
+        weekly_schedule = PlanningService._owned_weekly_schedule_or_404(db, actor, weekly_schedule_id)
         if weekly_schedule.status == "accepted":
             raise HTTPException(status_code=409, detail="Accepted schedules cannot be rejected")
         weekly_schedule.status = "rejected"
         db.commit()
         db.refresh(weekly_schedule)
-        return Phase4Service._weekly_schedule_response(db, weekly_schedule)
+        return PlanningService._weekly_schedule_response(db, weekly_schedule)
 
     @staticmethod
     def get_daily_schedule_by_date(db: Session, actor: User, schedule_date: date) -> DailyScheduleResponse:
@@ -364,16 +364,16 @@ class Phase4Service:
         )
         if schedule is None:
             raise HTTPException(status_code=404, detail="Daily schedule not found")
-        return Phase4Service._daily_schedule_response(db, schedule)
+        return PlanningService._daily_schedule_response(db, schedule)
 
     @staticmethod
     def accept_daily_schedule(db: Session, actor: User, daily_schedule_id: str) -> DailyScheduleResponse:
-        schedule = Phase4Service._owned_daily_schedule_or_404(db, actor, daily_schedule_id)
+        schedule = PlanningService._owned_daily_schedule_or_404(db, actor, daily_schedule_id)
         if schedule.status == "proposed":
             schedule.status = "accepted"
             db.commit()
             db.refresh(schedule)
-        return Phase4Service._daily_schedule_response(db, schedule)
+        return PlanningService._daily_schedule_response(db, schedule)
 
     @staticmethod
     def patch_daily_schedule(
@@ -382,7 +382,7 @@ class Phase4Service:
         daily_schedule_id: str,
         payload: DailySchedulePatchRequest,
     ) -> DailyScheduleResponse:
-        schedule = Phase4Service._owned_daily_schedule_or_404(db, actor, daily_schedule_id)
+        schedule = PlanningService._owned_daily_schedule_or_404(db, actor, daily_schedule_id)
         update_data = payload.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(schedule, key, value)
@@ -390,7 +390,7 @@ class Phase4Service:
             schedule.status = "adjusted"
         db.commit()
         db.refresh(schedule)
-        return Phase4Service._daily_schedule_response(db, schedule)
+        return PlanningService._daily_schedule_response(db, schedule)
 
     @staticmethod
     def patch_daily_schedule_item(
@@ -399,7 +399,7 @@ class Phase4Service:
         daily_schedule_item_id: str,
         payload: DailyScheduleItemPatchRequest,
     ) -> DailyScheduleResponse:
-        item = Phase4Service._owned_day_item_or_404(db, actor, daily_schedule_item_id)
+        item = PlanningService._owned_day_item_or_404(db, actor, daily_schedule_item_id)
         update_data = payload.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(item, key, value)
@@ -408,12 +408,12 @@ class Phase4Service:
         if item.outcome_status != "postponed":
             item.postponed_to_date = None
 
-        day_schedule = Phase4Service._owned_daily_schedule_or_404(db, actor, item.daily_schedule_id)
+        day_schedule = PlanningService._owned_daily_schedule_or_404(db, actor, item.daily_schedule_id)
         if day_schedule.status == "accepted":
             day_schedule.status = "adjusted"
         db.commit()
         db.refresh(day_schedule)
-        return Phase4Service._daily_schedule_response(db, day_schedule)
+        return PlanningService._daily_schedule_response(db, day_schedule)
 
     @staticmethod
     def start_day_item_focus(
@@ -422,7 +422,7 @@ class Phase4Service:
         daily_schedule_item_id: str,
         payload: DailyScheduleItemFocusStartRequest,
     ) -> DailyScheduleResponse:
-        item = Phase4Service._owned_day_item_or_404(db, actor, daily_schedule_item_id)
+        item = PlanningService._owned_day_item_or_404(db, actor, daily_schedule_item_id)
         active = db.scalar(select(FocusSession).where(FocusSession.owner_user_id == actor.id, FocusSession.status == "active"))
         if active is not None and active.task_id != item.task_id:
             raise HTTPException(status_code=409, detail="An active focus session already exists")
@@ -436,8 +436,8 @@ class Phase4Service:
                 )
             )
             db.commit()
-        day_schedule = Phase4Service._owned_daily_schedule_or_404(db, actor, item.daily_schedule_id)
-        return Phase4Service._daily_schedule_response(db, day_schedule)
+        day_schedule = PlanningService._owned_daily_schedule_or_404(db, actor, item.daily_schedule_id)
+        return PlanningService._daily_schedule_response(db, day_schedule)
 
     @staticmethod
     def end_day_item_focus(
@@ -446,7 +446,7 @@ class Phase4Service:
         daily_schedule_item_id: str,
         payload: DailyScheduleItemFocusEndRequest,
     ) -> DailyScheduleResponse:
-        item = Phase4Service._owned_day_item_or_404(db, actor, daily_schedule_item_id)
+        item = PlanningService._owned_day_item_or_404(db, actor, daily_schedule_item_id)
         active = db.scalar(
             select(FocusSession).where(
                 FocusSession.owner_user_id == actor.id,
@@ -459,8 +459,8 @@ class Phase4Service:
             active.post_task_energy = payload.post_task_energy
             active.ended_at = datetime.now(UTC)
             db.commit()
-        day_schedule = Phase4Service._owned_daily_schedule_or_404(db, actor, item.daily_schedule_id)
-        return Phase4Service._daily_schedule_response(db, day_schedule)
+        day_schedule = PlanningService._owned_daily_schedule_or_404(db, actor, item.daily_schedule_id)
+        return PlanningService._daily_schedule_response(db, day_schedule)
 
     @staticmethod
     def planner_telemetry_snapshot(db: Session, actor: User) -> dict[str, float | int | None]:
@@ -535,7 +535,7 @@ class Phase4Service:
             source_proposal_id=schedule.source_proposal_id,
             created_at=schedule.created_at,
             accepted_at=schedule.accepted_at,
-            days=[Phase4Service._daily_schedule_response(db, day) for day in days],
+            days=[PlanningService._daily_schedule_response(db, day) for day in days],
         )
 
     @staticmethod

@@ -54,7 +54,7 @@ def _client_with_test_db() -> Generator[TestClient, None, None]:
     Base.metadata.drop_all(bind=engine)
 
 
-def test_phase1_auth_and_role_access() -> None:
+def test_auth_and_role_access() -> None:
     client_gen = _client_with_test_db()
     client = next(client_gen)
 

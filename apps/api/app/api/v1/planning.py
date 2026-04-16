@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.security import require_roles
 from app.models.user import User
-from app.schemas.phase4 import (
+from app.schemas.planning import (
     DailyScheduleItemFocusEndRequest,
     DailyScheduleItemFocusStartRequest,
     DailyScheduleItemPatchRequest,
@@ -21,9 +21,9 @@ from app.schemas.phase4 import (
     WeeklyScheduleGenerateRequest,
     WeeklyScheduleResponse,
 )
-from app.services.phase4 import Phase4Service, default_week_start
+from app.services.planning import PlanningService, default_week_start
 
-router = APIRouter(tags=["phase4"])
+router = APIRouter(tags=["planning"])
 
 
 @router.post("/planning/weekly-proposals/generate", response_model=WeeklyPlanProposalResponse)
@@ -32,7 +32,7 @@ def generate_weekly_proposal(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> WeeklyPlanProposalResponse:
-    return Phase4Service.generate_weekly_proposal(db=db, actor=current_user, payload=payload)
+    return PlanningService.generate_weekly_proposal(db=db, actor=current_user, payload=payload)
 
 
 @router.post("/planning/weekly-proposals/generate-default", response_model=WeeklyPlanProposalResponse)
@@ -40,7 +40,7 @@ def generate_weekly_proposal_default(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> WeeklyPlanProposalResponse:
-    return Phase4Service.generate_weekly_proposal(
+    return PlanningService.generate_weekly_proposal(
         db=db,
         actor=current_user,
         payload=WeeklyPlanGenerateRequest(week_start_date=default_week_start()),
@@ -52,7 +52,7 @@ def get_latest_weekly_proposal(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> WeeklyPlanProposalResponse:
-    return Phase4Service.get_latest_weekly_proposal(db=db, actor=current_user)
+    return PlanningService.get_latest_weekly_proposal(db=db, actor=current_user)
 
 
 @router.post("/planning/weekly-proposals/{proposal_id}/approve", response_model=WeeklyPlanProposalResponse)
@@ -62,7 +62,7 @@ def approve_weekly_proposal(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> WeeklyPlanProposalResponse:
-    return Phase4Service.approve_weekly_proposal(db=db, actor=current_user, proposal_id=proposal_id, payload=payload)
+    return PlanningService.approve_weekly_proposal(db=db, actor=current_user, proposal_id=proposal_id, payload=payload)
 
 
 @router.post("/planning/note-extractions/preview", response_model=NoteExtractionResponse)
@@ -71,7 +71,7 @@ def preview_note_extraction(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> NoteExtractionResponse:
-    return Phase4Service.preview_note_extraction(
+    return PlanningService.preview_note_extraction(
         db=db,
         actor=current_user,
         source_title=payload.source_title,
@@ -87,7 +87,7 @@ def decide_note_extraction(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> NoteExtractionResponse:
-    return Phase4Service.decide_note_extraction(db=db, actor=current_user, extraction_id=extraction_id, payload=payload)
+    return PlanningService.decide_note_extraction(db=db, actor=current_user, extraction_id=extraction_id, payload=payload)
 
 
 @router.post("/schedules/weeks/generate", response_model=WeeklyScheduleResponse)
@@ -96,14 +96,14 @@ def generate_weekly_schedule(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> WeeklyScheduleResponse:
-    return Phase4Service.generate_weekly_schedule(db=db, actor=current_user, payload=payload)
+    return PlanningService.generate_weekly_schedule(db=db, actor=current_user, payload=payload)
 
 
 @router.get("/schedules/weeks/{week_start_date}", response_model=WeeklyScheduleResponse)
 def get_weekly_schedule(
     week_start_date: date, db: Session = Depends(get_db), current_user: User = Depends(require_roles("owner"))
 ) -> WeeklyScheduleResponse:
-    return Phase4Service.get_weekly_schedule_by_date(db=db, actor=current_user, week_start_date=week_start_date)
+    return PlanningService.get_weekly_schedule_by_date(db=db, actor=current_user, week_start_date=week_start_date)
 
 
 @router.post("/schedules/weeks/{weekly_schedule_id}/accept", response_model=WeeklyScheduleResponse)
@@ -112,7 +112,7 @@ def accept_weekly_schedule(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> WeeklyScheduleResponse:
-    return Phase4Service.accept_weekly_schedule(db=db, actor=current_user, weekly_schedule_id=weekly_schedule_id)
+    return PlanningService.accept_weekly_schedule(db=db, actor=current_user, weekly_schedule_id=weekly_schedule_id)
 
 
 @router.post("/schedules/weeks/{weekly_schedule_id}/reject", response_model=WeeklyScheduleResponse)
@@ -121,14 +121,14 @@ def reject_weekly_schedule(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> WeeklyScheduleResponse:
-    return Phase4Service.reject_weekly_schedule(db=db, actor=current_user, weekly_schedule_id=weekly_schedule_id)
+    return PlanningService.reject_weekly_schedule(db=db, actor=current_user, weekly_schedule_id=weekly_schedule_id)
 
 
 @router.get("/schedules/days/{schedule_date}", response_model=DailyScheduleResponse)
 def get_daily_schedule(
     schedule_date: date, db: Session = Depends(get_db), current_user: User = Depends(require_roles("owner"))
 ) -> DailyScheduleResponse:
-    return Phase4Service.get_daily_schedule_by_date(db=db, actor=current_user, schedule_date=schedule_date)
+    return PlanningService.get_daily_schedule_by_date(db=db, actor=current_user, schedule_date=schedule_date)
 
 
 @router.post("/schedules/days/{daily_schedule_id}/accept", response_model=DailyScheduleResponse)
@@ -137,7 +137,7 @@ def accept_daily_schedule(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> DailyScheduleResponse:
-    return Phase4Service.accept_daily_schedule(db=db, actor=current_user, daily_schedule_id=daily_schedule_id)
+    return PlanningService.accept_daily_schedule(db=db, actor=current_user, daily_schedule_id=daily_schedule_id)
 
 
 @router.patch("/schedules/days/{daily_schedule_id}", response_model=DailyScheduleResponse)
@@ -147,7 +147,7 @@ def patch_daily_schedule(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> DailyScheduleResponse:
-    return Phase4Service.patch_daily_schedule(db=db, actor=current_user, daily_schedule_id=daily_schedule_id, payload=payload)
+    return PlanningService.patch_daily_schedule(db=db, actor=current_user, daily_schedule_id=daily_schedule_id, payload=payload)
 
 
 @router.patch("/schedules/day-items/{daily_schedule_item_id}", response_model=DailyScheduleResponse)
@@ -157,7 +157,7 @@ def patch_daily_schedule_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> DailyScheduleResponse:
-    return Phase4Service.patch_daily_schedule_item(
+    return PlanningService.patch_daily_schedule_item(
         db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload
     )
 
@@ -169,7 +169,7 @@ def start_day_item_focus(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> DailyScheduleResponse:
-    return Phase4Service.start_day_item_focus(db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload)
+    return PlanningService.start_day_item_focus(db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload)
 
 
 @router.post("/schedules/day-items/{daily_schedule_item_id}/end-focus", response_model=DailyScheduleResponse)
@@ -179,4 +179,4 @@ def end_day_item_focus(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("owner")),
 ) -> DailyScheduleResponse:
-    return Phase4Service.end_day_item_focus(db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload)
+    return PlanningService.end_day_item_focus(db=db, actor=current_user, daily_schedule_item_id=daily_schedule_item_id, payload=payload)

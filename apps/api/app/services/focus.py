@@ -4,21 +4,21 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.phase2 import Task, TaskDependency
-from app.models.phase3 import BlockerEvent, FocusSession
+from app.models.domain import Task, TaskDependency
+from app.models.focus import BlockerEvent, FocusSession
 from app.models.user import User
-from app.schemas.phase3 import (
+from app.schemas.focus import (
     BlockerReason,
     DailyPlanRecommendation,
     DailyPlanResponse,
     DailyPlanScoreBreakdown,
 )
-from app.services.phase2 import Phase2Service
+from app.services.domain import DomainService
 
 TERMINAL_TASK_STATUSES = {"done", "completed", "cancelled", "archived"}
 
 
-class Phase3Service:
+class FocusService:
     @staticmethod
     def get_daily_plan(
         db: Session,
@@ -28,7 +28,7 @@ class Phase3Service:
     ) -> DailyPlanResponse:
         all_tasks = list(db.scalars(select(Task)).all())
         visible_tasks = [
-            task for task in all_tasks if Phase2Service._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope)
+            task for task in all_tasks if DomainService._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope)
         ]
         candidate_tasks = [task for task in visible_tasks if task.status.lower() not in TERMINAL_TASK_STATUSES]
 
@@ -42,7 +42,7 @@ class Phase3Service:
 
         recommendations: list[DailyPlanRecommendation] = []
         for task in candidate_tasks:
-            rec = Phase3Service._score_task(
+            rec = FocusService._score_task(
                 task=task,
                 task_lookup=task_lookup,
                 task_dependencies=deps_by_task.get(task.id, []),
@@ -57,7 +57,7 @@ class Phase3Service:
             )
         )
         top = recommendations[:limit]
-        overload = Phase3Service._compute_overload_signals(db, actor)
+        overload = FocusService._compute_overload_signals(db, actor)
 
         return DailyPlanResponse(
             generated_at=datetime.now(UTC),
@@ -74,7 +74,7 @@ class Phase3Service:
         task = db.scalar(select(Task).where(Task.id == task_id))
         if task is None:
             raise HTTPException(status_code=404, detail="Task not found")
-        if not Phase2Service._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope):
+        if not DomainService._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope):
             raise HTTPException(status_code=403, detail="Forbidden")
         active = db.scalar(select(FocusSession).where(FocusSession.owner_user_id == actor.id, FocusSession.status == "active"))
         if active is not None:
@@ -90,7 +90,7 @@ class Phase3Service:
 
     @staticmethod
     def stop_focus_session(db: Session, actor: User, session_id: str, post_task_energy: float) -> FocusSession:
-        session = Phase3Service._owned_session_or_404(db, actor, session_id)
+        session = FocusService._owned_session_or_404(db, actor, session_id)
         if session.status != "active":
             return session
         session.status = "completed"
@@ -108,7 +108,7 @@ class Phase3Service:
         blocker_reason: BlockerReason,
         note: str | None,
     ) -> tuple[FocusSession, BlockerEvent]:
-        session = Phase3Service._owned_session_or_404(db, actor, session_id)
+        session = FocusService._owned_session_or_404(db, actor, session_id)
         if session.status != "active":
             raise HTTPException(status_code=409, detail="Sidetrack is only valid for an active session")
 
@@ -138,9 +138,9 @@ class Phase3Service:
         post_task_energy: float,
         note: str | None,
     ) -> tuple[FocusSession, BlockerEvent]:
-        session = Phase3Service._owned_session_or_404(db, actor, session_id)
+        session = FocusService._owned_session_or_404(db, actor, session_id)
         if session.status != "active":
-            return session, Phase3Service._latest_blocker_event(db, session.id)
+            return session, FocusService._latest_blocker_event(db, session.id)
 
         event = BlockerEvent(
             owner_user_id=actor.id,

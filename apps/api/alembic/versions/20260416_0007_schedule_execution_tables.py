@@ -1,4 +1,4 @@
-"""add phase4.1 schedule tables and telemetry fields
+"""add schedule tables and telemetry fields
 
 Revision ID: 20260416_0007
 Revises: 20260415_0006

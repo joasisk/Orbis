@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.models.user import User
-from app.schemas.phase2 import (
+from app.schemas.domain import (
     AreaCreate,
     AreaRead,
     AreaUpdate,
@@ -21,20 +21,20 @@ from app.schemas.phase2 import (
     TaskUpdate,
     VersionResponse,
 )
-from app.services.phase2 import Phase2Service
+from app.services.domain import DomainService
 
-router = APIRouter(tags=["phase2"])
+router = APIRouter(tags=["domain"])
 
 
 @router.post("/areas", response_model=AreaRead, status_code=status.HTTP_201_CREATED)
 def create_area(payload: AreaCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> AreaRead:
-    area = Phase2Service.create_area(db, current_user, payload.model_dump())
+    area = DomainService.create_area(db, current_user, payload.model_dump())
     return AreaRead.model_validate(area, from_attributes=True)
 
 
 @router.get("/areas", response_model=list[AreaRead])
 def list_areas(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[AreaRead]:
-    rows = Phase2Service.list_areas(db, current_user)
+    rows = DomainService.list_areas(db, current_user)
     return [AreaRead.model_validate(item, from_attributes=True) for item in rows]
 
 
@@ -45,13 +45,13 @@ def update_area(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AreaRead:
-    area = Phase2Service.update_area(db, current_user, area_id, payload.model_dump(exclude_unset=True))
+    area = DomainService.update_area(db, current_user, area_id, payload.model_dump(exclude_unset=True))
     return AreaRead.model_validate(area, from_attributes=True)
 
 
 @router.delete("/areas/{area_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_area(area_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Response:
-    Phase2Service.delete_area(db, current_user, area_id)
+    DomainService.delete_area(db, current_user, area_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -61,7 +61,7 @@ def create_project(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ProjectRead:
-    project = Phase2Service.create_project(db, current_user, payload.model_dump())
+    project = DomainService.create_project(db, current_user, payload.model_dump())
     return ProjectRead.model_validate(project, from_attributes=True)
 
 
@@ -73,13 +73,13 @@ def list_projects(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ProjectRead]:
-    rows = Phase2Service.list_projects(db, current_user, area_id, status_value, privacy)
+    rows = DomainService.list_projects(db, current_user, area_id, status_value, privacy)
     return [ProjectRead.model_validate(item, from_attributes=True) for item in rows]
 
 
 @router.get("/projects/{project_id}", response_model=ProjectRead)
 def get_project(project_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> ProjectRead:
-    row = Phase2Service.get_project(db, current_user, project_id)
+    row = DomainService.get_project(db, current_user, project_id)
     return ProjectRead.model_validate(row, from_attributes=True)
 
 
@@ -90,7 +90,7 @@ def update_project(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ProjectRead:
-    row = Phase2Service.update_project(db, current_user, project_id, payload.model_dump(exclude_unset=True))
+    row = DomainService.update_project(db, current_user, project_id, payload.model_dump(exclude_unset=True))
     return ProjectRead.model_validate(row, from_attributes=True)
 
 
@@ -100,13 +100,13 @@ def delete_project(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    Phase2Service.delete_project(db, current_user, project_id)
+    DomainService.delete_project(db, current_user, project_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 def create_task(payload: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> TaskRead:
-    row = Phase2Service.create_task(db, current_user, payload.model_dump())
+    row = DomainService.create_task(db, current_user, payload.model_dump())
     return TaskRead.model_validate(row, from_attributes=True)
 
 
@@ -119,13 +119,13 @@ def list_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[TaskRead]:
-    rows = Phase2Service.list_tasks(db, current_user, project_id, status_value, priority, privacy)
+    rows = DomainService.list_tasks(db, current_user, project_id, status_value, priority, privacy)
     return [TaskRead.model_validate(row, from_attributes=True) for row in rows]
 
 
 @router.get("/tasks/{task_id}", response_model=TaskRead)
 def get_task(task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> TaskRead:
-    row = Phase2Service.get_task(db, current_user, task_id)
+    row = DomainService.get_task(db, current_user, task_id)
     return TaskRead.model_validate(row, from_attributes=True)
 
 
@@ -136,13 +136,13 @@ def update_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> TaskRead:
-    row = Phase2Service.update_task(db, current_user, task_id, payload.model_dump(exclude_unset=True))
+    row = DomainService.update_task(db, current_user, task_id, payload.model_dump(exclude_unset=True))
     return TaskRead.model_validate(row, from_attributes=True)
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Response:
-    Phase2Service.delete_task(db, current_user, task_id)
+    DomainService.delete_task(db, current_user, task_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -152,7 +152,7 @@ def create_recurring_commitment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RecurringCommitmentRead:
-    row = Phase2Service.create_recurring_commitment(db, current_user, payload.model_dump())
+    row = DomainService.create_recurring_commitment(db, current_user, payload.model_dump())
     return RecurringCommitmentRead.model_validate(row, from_attributes=True)
 
 
@@ -160,7 +160,7 @@ def create_recurring_commitment(
 def list_recurring_commitments(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> list[RecurringCommitmentRead]:
-    rows = Phase2Service.list_recurring_commitments(db, current_user)
+    rows = DomainService.list_recurring_commitments(db, current_user)
     return [RecurringCommitmentRead.model_validate(row, from_attributes=True) for row in rows]
 
 
@@ -170,7 +170,7 @@ def get_recurring_commitment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RecurringCommitmentRead:
-    row = Phase2Service.get_recurring_commitment(db, current_user, commitment_id)
+    row = DomainService.get_recurring_commitment(db, current_user, commitment_id)
     return RecurringCommitmentRead.model_validate(row, from_attributes=True)
 
 
@@ -181,7 +181,7 @@ def update_recurring_commitment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RecurringCommitmentRead:
-    row = Phase2Service.update_recurring_commitment(db, current_user, commitment_id, payload.model_dump(exclude_unset=True))
+    row = DomainService.update_recurring_commitment(db, current_user, commitment_id, payload.model_dump(exclude_unset=True))
     return RecurringCommitmentRead.model_validate(row, from_attributes=True)
 
 
@@ -191,7 +191,7 @@ def delete_recurring_commitment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    Phase2Service.delete_recurring_commitment(db, current_user, commitment_id)
+    DomainService.delete_recurring_commitment(db, current_user, commitment_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -201,7 +201,7 @@ def create_task_dependency(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> TaskDependencyRead:
-    row = Phase2Service.create_task_dependency(db, current_user, payload.task_id, payload.depends_on_task_id)
+    row = DomainService.create_task_dependency(db, current_user, payload.task_id, payload.depends_on_task_id)
     return TaskDependencyRead.model_validate(row, from_attributes=True)
 
 
@@ -211,7 +211,7 @@ def list_task_dependencies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[TaskDependencyRead]:
-    rows = Phase2Service.list_task_dependencies(db, current_user, task_id)
+    rows = DomainService.list_task_dependencies(db, current_user, task_id)
     return [TaskDependencyRead.model_validate(row, from_attributes=True) for row in rows]
 
 
@@ -221,7 +221,7 @@ def delete_task_dependency(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    Phase2Service.delete_task_dependency(db, current_user, dependency_id)
+    DomainService.delete_task_dependency(db, current_user, dependency_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -232,5 +232,5 @@ def get_entity_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[VersionResponse]:
-    rows = Phase2Service.get_entity_history(db, current_user, entity_type, entity_id)
+    rows = DomainService.get_entity_history(db, current_user, entity_type, entity_id)
     return [VersionResponse.model_validate(row, from_attributes=True) for row in rows]
