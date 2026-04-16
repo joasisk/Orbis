@@ -483,9 +483,7 @@ class PlanningService:
         )
 
         reminder_response_seconds = [
-            reminder.response_delay_seconds
-            for reminder in reminder_rows
-            if reminder.response_delay_seconds is not None
+            reminder.response_delay_seconds for reminder in reminder_rows if reminder.response_delay_seconds is not None
         ]
         reminder_metrics = {
             "reminder_response_count": len(reminder_rows),
