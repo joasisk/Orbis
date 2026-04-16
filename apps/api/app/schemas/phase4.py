@@ -1,9 +1,12 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 WeeklyProposalStatus = Literal["proposed", "approved", "rejected"]
+WeeklyScheduleStatus = Literal["proposed", "accepted", "rejected"]
+DailyScheduleStatus = Literal["proposed", "accepted", "adjusted"]
+DailyScheduleItemOutcome = Literal["planned", "done", "postponed", "failed", "partial", "skipped"]
 NoteExtractionStatus = Literal["proposed", "accepted", "dismissed"]
 NoteExtractionDecision = Literal["accept", "dismiss"]
 
@@ -69,3 +72,67 @@ class NoteExtractionResponse(BaseModel):
 class NoteExtractionDecisionRequest(BaseModel):
     decision: NoteExtractionDecision
     selected_indices: list[int] = Field(default_factory=list)
+
+
+class WeeklyScheduleGenerateRequest(BaseModel):
+    week_start_date: date
+    source_proposal_id: str | None = None
+
+
+class DailyScheduleItemResponse(BaseModel):
+    id: str
+    task_id: str
+    planned_minutes: int
+    actual_minutes: int | None
+    outcome_status: DailyScheduleItemOutcome
+    order_index: int
+    distraction_count: int
+    distraction_notes: str | None
+    postponed_to_date: date | None
+    failure_reason: str | None
+
+
+class DailyScheduleResponse(BaseModel):
+    id: str
+    weekly_schedule_id: str
+    schedule_date: date
+    status: DailyScheduleStatus
+    mood_score: int | None
+    morning_energy: float | None
+    evening_energy: float | None
+    self_evaluation: str | None
+    items: list[DailyScheduleItemResponse] = Field(default_factory=list)
+
+
+class WeeklyScheduleResponse(BaseModel):
+    id: str
+    week_start_date: date
+    status: WeeklyScheduleStatus
+    source_proposal_id: str | None
+    created_at: datetime
+    accepted_at: datetime | None
+    days: list[DailyScheduleResponse] = Field(default_factory=list)
+
+
+class DailySchedulePatchRequest(BaseModel):
+    mood_score: int | None = Field(default=None, ge=1, le=5)
+    morning_energy: float | None = Field(default=None, ge=0, le=1)
+    evening_energy: float | None = Field(default=None, ge=0, le=1)
+    self_evaluation: str | None = Field(default=None, max_length=2000)
+
+
+class DailyScheduleItemPatchRequest(BaseModel):
+    outcome_status: DailyScheduleItemOutcome | None = None
+    actual_minutes: int | None = Field(default=None, ge=0)
+    distraction_count: int | None = Field(default=None, ge=0)
+    distraction_notes: str | None = Field(default=None, max_length=2000)
+    postponed_to_date: date | None = None
+    failure_reason: str | None = Field(default=None, max_length=2000)
+
+
+class DailyScheduleItemFocusStartRequest(BaseModel):
+    pre_task_energy: float = Field(ge=0, le=10)
+
+
+class DailyScheduleItemFocusEndRequest(BaseModel):
+    post_task_energy: float = Field(ge=0, le=10)

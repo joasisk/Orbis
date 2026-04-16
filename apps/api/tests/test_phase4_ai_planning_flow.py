@@ -7,6 +7,8 @@ from app.models import (  # noqa: F401
     AreaOfLife,
     AuditEvent,
     BlockerEvent,
+    DailySchedule,
+    DailyScheduleItem,
     EntityVersion,
     FocusSession,
     NoteExtraction,
@@ -18,6 +20,7 @@ from app.models import (  # noqa: F401
     User,
     WeeklyPlanItem,
     WeeklyPlanProposal,
+    WeeklySchedule,
 )
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -173,6 +176,85 @@ def test_note_extraction_preview_and_accept_creates_tasks() -> None:
         titles = [item["title"] for item in tasks_resp.json()]
         assert "book dentist" in titles
         assert "send project update" in titles
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_weekly_schedule_lifecycle_and_daily_item_telemetry() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        token = _bootstrap_and_token(client)
+        headers = _headers(token)
+        _seed_tasks(client, headers)
+
+        proposal_resp = client.post(
+            "/api/v1/planning/weekly-proposals/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13"},
+        )
+        assert proposal_resp.status_code == 200
+        proposal_id = proposal_resp.json()["id"]
+
+        generate_schedule_resp = client.post(
+            "/api/v1/schedules/weeks/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13", "source_proposal_id": proposal_id},
+        )
+        assert generate_schedule_resp.status_code == 200
+        weekly = generate_schedule_resp.json()
+        assert weekly["status"] == "proposed"
+        assert len(weekly["days"]) == 7
+        assert weekly["source_proposal_id"] == proposal_id
+
+        accept_week_resp = client.post(f"/api/v1/schedules/weeks/{weekly['id']}/accept", headers=headers)
+        assert accept_week_resp.status_code == 200
+        accepted = accept_week_resp.json()
+        assert accepted["status"] == "accepted"
+        monday = accepted["days"][0]
+        assert monday["items"]
+
+        patch_day_resp = client.patch(
+            f"/api/v1/schedules/days/{monday['id']}",
+            headers=headers,
+            json={"mood_score": 4, "morning_energy": 0.7, "self_evaluation": "solid start"},
+        )
+        assert patch_day_resp.status_code == 200
+        patched_day = patch_day_resp.json()
+        assert patched_day["status"] == "adjusted"
+        item_id = patched_day["items"][0]["id"]
+
+        patch_item_resp = client.patch(
+            f"/api/v1/schedules/day-items/{item_id}",
+            headers=headers,
+            json={"outcome_status": "done", "actual_minutes": 42, "distraction_count": 1},
+        )
+        assert patch_item_resp.status_code == 200
+        updated_day = patch_item_resp.json()
+        updated_item = next(item for item in updated_day["items"] if item["id"] == item_id)
+        assert updated_item["outcome_status"] == "done"
+        assert updated_item["actual_minutes"] == 42
+
+        start_focus_resp = client.post(
+            f"/api/v1/schedules/day-items/{item_id}/start-focus",
+            headers=headers,
+            json={"pre_task_energy": 6.5},
+        )
+        assert start_focus_resp.status_code == 200
+
+        end_focus_resp = client.post(
+            f"/api/v1/schedules/day-items/{item_id}/end-focus",
+            headers=headers,
+            json={"post_task_energy": 6.0},
+        )
+        assert end_focus_resp.status_code == 200
+
+        get_day_resp = client.get("/api/v1/schedules/days/2026-04-13", headers=headers)
+        assert get_day_resp.status_code == 200
+        assert get_day_resp.json()["id"] == monday["id"]
     finally:
         try:
             next(client_gen)
