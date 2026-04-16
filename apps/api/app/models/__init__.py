@@ -1,7 +1,7 @@
 from app.models.audit_event import AuditEvent
-from app.models.phase2 import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
-from app.models.phase3 import BlockerEvent, FocusSession
-from app.models.phase4 import (
+from app.models.domain import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
+from app.models.focus import BlockerEvent, FocusSession
+from app.models.planning import (
     DailySchedule,
     DailyScheduleItem,
     NoteExtraction,

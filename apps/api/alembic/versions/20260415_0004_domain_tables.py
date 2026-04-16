@@ -1,4 +1,4 @@
-"""add phase2 domain tables
+"""add domain tables
 
 Revision ID: 20260415_0004
 Revises: 20260415_0003

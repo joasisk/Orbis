@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from app.models.phase2 import Task
+from app.models.domain import Task
 
-PROMPT_TEMPLATE_VERSION = "phase4.weekly.v1"
+PROMPT_TEMPLATE_VERSION = "planning.weekly.v1"
 
 
 @dataclass(slots=True)

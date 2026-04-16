@@ -1,4 +1,4 @@
-"""add phase4 ai planning proposal and note extraction tables
+"""add planning proposal and note extraction tables
 
 Revision ID: 20260415_0006
 Revises: 20260415_0005

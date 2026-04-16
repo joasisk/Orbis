@@ -5,19 +5,19 @@ from fastapi import HTTPException, status
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.models.phase2 import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
+from app.models.domain import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
 from app.models.user import User
 
 
-class Phase2Service:
+class DomainService:
     @staticmethod
     def _jsonable(value: Any) -> Any:
         if isinstance(value, datetime):
             return value.isoformat()
         if isinstance(value, dict):
-            return {k: Phase2Service._jsonable(v) for k, v in value.items()}
+            return {k: DomainService._jsonable(v) for k, v in value.items()}
         if isinstance(value, list):
-            return [Phase2Service._jsonable(item) for item in value]
+            return [DomainService._jsonable(item) for item in value]
         return value
 
     @staticmethod
@@ -49,7 +49,7 @@ class Phase2Service:
                 entity_id=entity_id,
                 actor_user_id=actor_user_id,
                 event_type=event_type,
-                changed_fields=Phase2Service._jsonable(changed_fields),
+                changed_fields=DomainService._jsonable(changed_fields),
             )
         )
 
@@ -72,7 +72,7 @@ class Phase2Service:
         entity = AreaOfLife(owner_user_id=actor.id, **payload)
         db.add(entity)
         db.flush()
-        Phase2Service._log_version(db, actor.id, "area", entity.id, actor.id, "create", payload)
+        DomainService._log_version(db, actor.id, "area", entity.id, actor.id, "create", payload)
         db.commit()
         db.refresh(entity)
         return entity
@@ -89,13 +89,13 @@ class Phase2Service:
         entity = db.scalar(select(AreaOfLife).where(AreaOfLife.id == area_id))
         if entity is None:
             raise HTTPException(status_code=404, detail="Area not found")
-        Phase2Service._ensure_owner_or_spouse(actor, entity.owner_user_id)
+        DomainService._ensure_owner_or_spouse(actor, entity.owner_user_id)
         changes = {}
         for key, value in payload.items():
             if getattr(entity, key) != value:
                 changes[key] = {"from": getattr(entity, key), "to": value}
                 setattr(entity, key, value)
-        Phase2Service._log_version(db, entity.owner_user_id, "area", entity.id, actor.id, "update", changes)
+        DomainService._log_version(db, entity.owner_user_id, "area", entity.id, actor.id, "update", changes)
         db.commit()
         db.refresh(entity)
         return entity
@@ -105,8 +105,8 @@ class Phase2Service:
         entity = db.scalar(select(AreaOfLife).where(AreaOfLife.id == area_id))
         if entity is None:
             raise HTTPException(status_code=404, detail="Area not found")
-        Phase2Service._ensure_owner_or_spouse(actor, entity.owner_user_id)
-        Phase2Service._log_version(db, entity.owner_user_id, "area", entity.id, actor.id, "delete", {"id": area_id})
+        DomainService._ensure_owner_or_spouse(actor, entity.owner_user_id)
+        DomainService._log_version(db, entity.owner_user_id, "area", entity.id, actor.id, "delete", {"id": area_id})
         db.delete(entity)
         db.commit()
 
@@ -115,11 +115,11 @@ class Phase2Service:
         area = db.scalar(select(AreaOfLife).where(AreaOfLife.id == payload["area_id"]))
         if area is None:
             raise HTTPException(status_code=404, detail="Area not found")
-        Phase2Service._ensure_owner_only(actor, area.owner_user_id)
+        DomainService._ensure_owner_only(actor, area.owner_user_id)
         entity = Project(owner_user_id=area.owner_user_id, **payload)
         db.add(entity)
         db.flush()
-        Phase2Service._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "create", payload)
+        DomainService._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "create", payload)
         db.commit()
         db.refresh(entity)
         return entity
@@ -136,36 +136,36 @@ class Phase2Service:
         elif privacy == "public":
             stmt = stmt.where(Project.is_private.is_(False))
         entities = list(db.scalars(stmt.order_by(Project.created_at.desc())).all())
-        return [item for item in entities if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)]
+        return [item for item in entities if DomainService._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)]
 
     @staticmethod
     def get_project(db: Session, actor: User, project_id: str) -> Project:
         entity = db.scalar(select(Project).where(Project.id == project_id))
         if entity is None:
             raise HTTPException(status_code=404, detail="Project not found")
-        if not Phase2Service._can_view(actor, entity.owner_user_id, entity.is_private, entity.visibility_scope):
+        if not DomainService._can_view(actor, entity.owner_user_id, entity.is_private, entity.visibility_scope):
             raise HTTPException(status_code=403, detail="Forbidden")
         return entity
 
     @staticmethod
     def update_project(db: Session, actor: User, project_id: str, payload: dict[str, Any]) -> Project:
-        entity = Phase2Service.get_project(db, actor, project_id)
-        Phase2Service._ensure_owner_only(actor, entity.owner_user_id)
+        entity = DomainService.get_project(db, actor, project_id)
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
         changes = {}
         for key, value in payload.items():
             if getattr(entity, key) != value:
                 changes[key] = {"from": getattr(entity, key), "to": value}
                 setattr(entity, key, value)
-        Phase2Service._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "update", changes)
+        DomainService._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "update", changes)
         db.commit()
         db.refresh(entity)
         return entity
 
     @staticmethod
     def delete_project(db: Session, actor: User, project_id: str) -> None:
-        entity = Phase2Service.get_project(db, actor, project_id)
-        Phase2Service._ensure_owner_only(actor, entity.owner_user_id)
-        Phase2Service._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "delete", {"id": project_id})
+        entity = DomainService.get_project(db, actor, project_id)
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
+        DomainService._log_version(db, entity.owner_user_id, "project", entity.id, actor.id, "delete", {"id": project_id})
         db.delete(entity)
         db.commit()
 
@@ -176,12 +176,12 @@ class Phase2Service:
             project = db.scalar(select(Project).where(Project.id == payload["project_id"]))
             if project is None:
                 raise HTTPException(status_code=404, detail="Project not found")
-            Phase2Service._ensure_owner_only(actor, project.owner_user_id)
+            DomainService._ensure_owner_only(actor, project.owner_user_id)
             owner_user_id = project.owner_user_id
         entity = Task(owner_user_id=owner_user_id, **payload)
         db.add(entity)
         db.flush()
-        Phase2Service._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "create", payload)
+        DomainService._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "create", payload)
         db.commit()
         db.refresh(entity)
         return entity
@@ -202,36 +202,36 @@ class Phase2Service:
         elif privacy == "public":
             stmt = stmt.where(Task.is_private.is_(False))
         entities = list(db.scalars(stmt.order_by(Task.created_at.desc())).all())
-        return [item for item in entities if Phase2Service._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)]
+        return [item for item in entities if DomainService._can_view(actor, item.owner_user_id, item.is_private, item.visibility_scope)]
 
     @staticmethod
     def get_task(db: Session, actor: User, task_id: str) -> Task:
         entity = db.scalar(select(Task).where(Task.id == task_id))
         if entity is None:
             raise HTTPException(status_code=404, detail="Task not found")
-        if not Phase2Service._can_view(actor, entity.owner_user_id, entity.is_private, entity.visibility_scope):
+        if not DomainService._can_view(actor, entity.owner_user_id, entity.is_private, entity.visibility_scope):
             raise HTTPException(status_code=403, detail="Forbidden")
         return entity
 
     @staticmethod
     def update_task(db: Session, actor: User, task_id: str, payload: dict[str, Any]) -> Task:
-        entity = Phase2Service.get_task(db, actor, task_id)
-        Phase2Service._ensure_owner_only(actor, entity.owner_user_id)
+        entity = DomainService.get_task(db, actor, task_id)
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
         changes = {}
         for key, value in payload.items():
             if getattr(entity, key) != value:
                 changes[key] = {"from": getattr(entity, key), "to": value}
                 setattr(entity, key, value)
-        Phase2Service._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "update", changes)
+        DomainService._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "update", changes)
         db.commit()
         db.refresh(entity)
         return entity
 
     @staticmethod
     def delete_task(db: Session, actor: User, task_id: str) -> None:
-        entity = Phase2Service.get_task(db, actor, task_id)
-        Phase2Service._ensure_owner_only(actor, entity.owner_user_id)
-        Phase2Service._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "delete", {"id": task_id})
+        entity = DomainService.get_task(db, actor, task_id)
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
+        DomainService._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "delete", {"id": task_id})
         db.delete(entity)
         db.commit()
 
@@ -240,7 +240,7 @@ class Phase2Service:
         entity = RecurringCommitment(owner_user_id=actor.id, **payload)
         db.add(entity)
         db.flush()
-        Phase2Service._log_version(db, actor.id, "recurring_commitment", entity.id, actor.id, "create", payload)
+        DomainService._log_version(db, actor.id, "recurring_commitment", entity.id, actor.id, "create", payload)
         db.commit()
         db.refresh(entity)
         return entity
@@ -264,13 +264,13 @@ class Phase2Service:
         entity = db.scalar(select(RecurringCommitment).where(RecurringCommitment.id == commitment_id))
         if entity is None:
             raise HTTPException(status_code=404, detail="Recurring commitment not found")
-        Phase2Service._ensure_owner_only(actor, entity.owner_user_id)
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
         changes = {}
         for key, value in payload.items():
             if getattr(entity, key) != value:
                 changes[key] = {"from": getattr(entity, key), "to": value}
                 setattr(entity, key, value)
-        Phase2Service._log_version(
+        DomainService._log_version(
             db,
             entity.owner_user_id,
             "recurring_commitment",
@@ -288,8 +288,8 @@ class Phase2Service:
         entity = db.scalar(select(RecurringCommitment).where(RecurringCommitment.id == commitment_id))
         if entity is None:
             raise HTTPException(status_code=404, detail="Recurring commitment not found")
-        Phase2Service._ensure_owner_only(actor, entity.owner_user_id)
-        Phase2Service._log_version(
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
+        DomainService._log_version(
             db,
             entity.owner_user_id,
             "recurring_commitment",
@@ -303,19 +303,19 @@ class Phase2Service:
 
     @staticmethod
     def create_task_dependency(db: Session, actor: User, task_id: str, depends_on_task_id: str) -> TaskDependency:
-        task = Phase2Service.get_task(db, actor, task_id)
-        dependency = Phase2Service.get_task(db, actor, depends_on_task_id)
-        Phase2Service._ensure_owner_only(actor, task.owner_user_id)
+        task = DomainService.get_task(db, actor, task_id)
+        dependency = DomainService.get_task(db, actor, depends_on_task_id)
+        DomainService._ensure_owner_only(actor, task.owner_user_id)
         if task.id == dependency.id:
             raise HTTPException(status_code=422, detail="Task cannot depend on itself")
         if task.owner_user_id != dependency.owner_user_id:
             raise HTTPException(status_code=422, detail="Dependencies must be within the same owner scope")
-        if Phase2Service._would_create_dependency_cycle(db, task.id, dependency.id):
+        if DomainService._would_create_dependency_cycle(db, task.id, dependency.id):
             raise HTTPException(status_code=422, detail="Task dependency cycle detected")
         entity = TaskDependency(owner_user_id=task.owner_user_id, task_id=task.id, depends_on_task_id=dependency.id)
         db.add(entity)
         db.flush()
-        Phase2Service._log_version(
+        DomainService._log_version(
             db,
             entity.owner_user_id,
             "task_dependency",
@@ -346,9 +346,9 @@ class Phase2Service:
             dependency_item = tasks.get(row.depends_on_task_id)
             if task_item is None or dependency_item is None:
                 continue
-            if not Phase2Service._can_view(actor, task_item.owner_user_id, task_item.is_private, task_item.visibility_scope):
+            if not DomainService._can_view(actor, task_item.owner_user_id, task_item.is_private, task_item.visibility_scope):
                 continue
-            if not Phase2Service._can_view(
+            if not DomainService._can_view(
                 actor,
                 dependency_item.owner_user_id,
                 dependency_item.is_private,
@@ -363,8 +363,8 @@ class Phase2Service:
         entity = db.scalar(select(TaskDependency).where(TaskDependency.id == dependency_id))
         if entity is None:
             raise HTTPException(status_code=404, detail="Dependency not found")
-        Phase2Service._ensure_owner_only(actor, entity.owner_user_id)
-        Phase2Service._log_version(
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
+        DomainService._log_version(
             db,
             entity.owner_user_id,
             "task_dependency",

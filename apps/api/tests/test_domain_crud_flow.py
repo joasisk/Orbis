@@ -80,7 +80,7 @@ def _create_and_login_spouse(client: TestClient, owner_token: str) -> str:
     return spouse_login_response.json()["access_token"]
 
 
-def test_phase2_crud_and_history_flow() -> None:
+def test_domain_crud_and_history_flow() -> None:
     client_gen = _client_with_test_db()
     client = next(client_gen)
     try:
@@ -171,7 +171,7 @@ def test_phase2_crud_and_history_flow() -> None:
             pass
 
 
-def test_phase2_write_authorization_cycle_and_recurring_detail() -> None:
+def test_domain_write_authorization_cycle_and_recurring_detail() -> None:
     client_gen = _client_with_test_db()
     client = next(client_gen)
     try:

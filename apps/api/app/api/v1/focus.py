@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.models.user import User
-from app.schemas.phase3 import (
+from app.schemas.focus import (
     BlockerEventResponse,
     DailyPlanResponse,
     FocusSessionResponse,
@@ -13,9 +13,9 @@ from app.schemas.phase3 import (
     FocusStopRequest,
     FocusUnableRequest,
 )
-from app.services.phase3 import Phase3Service
+from app.services.focus import FocusService
 
-router = APIRouter(tags=["phase3"])
+router = APIRouter(tags=["focus"])
 
 
 @router.get("/planning/daily-plan", response_model=DailyPlanResponse)
@@ -25,7 +25,7 @@ def get_daily_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DailyPlanResponse:
-    return Phase3Service.get_daily_plan(db=db, actor=current_user, limit=limit, current_energy=current_energy)
+    return FocusService.get_daily_plan(db=db, actor=current_user, limit=limit, current_energy=current_energy)
 
 
 @router.post("/focus/start", response_model=FocusSessionResponse)
@@ -34,7 +34,7 @@ def start_focus_session(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FocusSessionResponse:
-    session = Phase3Service.start_focus_session(db, current_user, payload.task_id, payload.pre_task_energy)
+    session = FocusService.start_focus_session(db, current_user, payload.task_id, payload.pre_task_energy)
     return FocusSessionResponse.model_validate(session, from_attributes=True)
 
 
@@ -44,7 +44,7 @@ def stop_focus_session(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FocusSessionResponse:
-    session = Phase3Service.stop_focus_session(db, current_user, payload.session_id, payload.post_task_energy)
+    session = FocusService.stop_focus_session(db, current_user, payload.session_id, payload.post_task_energy)
     return FocusSessionResponse.model_validate(session, from_attributes=True)
 
 
@@ -54,7 +54,7 @@ def sidetrack_focus_session(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> BlockerEventResponse:
-    _, event = Phase3Service.sidetrack_focus_session(
+    _, event = FocusService.sidetrack_focus_session(
         db,
         current_user,
         payload.session_id,
@@ -70,7 +70,7 @@ def unable_focus_session(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> BlockerEventResponse:
-    _, event = Phase3Service.unable_focus_session(
+    _, event = FocusService.unable_focus_session(
         db,
         current_user,
         payload.session_id,

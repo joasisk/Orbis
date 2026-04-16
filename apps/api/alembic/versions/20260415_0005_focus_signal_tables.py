@@ -1,4 +1,4 @@
-"""add phase3 focus sessions and blocker events
+"""add focus sessions and blocker events
 
 Revision ID: 20260415_0005
 Revises: 20260415_0004
