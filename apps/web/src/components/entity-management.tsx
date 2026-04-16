@@ -58,6 +58,11 @@ export function EntityManagement({ entityType }: { entityType: EntityType }) {
 
   async function loadEntities() {
     setError("");
+    if (!token) {
+      setError("Access token is required.");
+      return;
+    }
+
     try {
       const response = await fetch(endpoint, {
         headers: getAuthHeaders(token),
@@ -120,9 +125,20 @@ export function EntityManagement({ entityType }: { entityType: EntityType }) {
   }
 
   useEffect(() => {
-    loadEntities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
+    if (localToken) {
+      setToken(localToken);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    void loadEntities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, endpoint]);
 
   return (
     <section className="shell-page">
@@ -312,6 +328,11 @@ export function EntityDetailView({ entityType, id }: { entityType: EntityType; i
 
   async function refresh() {
     setError("");
+    if (!token) {
+      setError("Access token is required.");
+      return;
+    }
+
     const headers = getAuthHeaders(token);
 
     const [entityRes, historyRes] = await Promise.all([
@@ -329,9 +350,20 @@ export function EntityDetailView({ entityType, id }: { entityType: EntityType; i
   }
 
   useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
+    if (localToken) {
+      setToken(localToken);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, apiBase, entityType, id]);
 
   return (
     <section className="shell-page">
