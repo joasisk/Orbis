@@ -109,20 +109,41 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
 
 ---
 
-## Draft next-step plan (smallest viable sequence)
+## Updated next-step plan (with intermediate catch-up phase)
 
-1. **Promote phase-3 workflow to primary web route**
-   - Mount or route to the existing `Phase3Home` component from `/` (or equivalent top-level landing flow).
-   - Keep current design shell as layout framing, not as a dead-end static screen.
+1. **Phase 4.5 (new) — Web catch-up + settings interface**
+   - Make `/` API-backed and remove static dead-end behavior.
+   - Fetch and render core domain data in default user flows:
+     - Areas of Life
+     - Projects
+     - Tasks
+   - Fetch and render scheduling context:
+     - daily plan (“what to do now”)
+     - weekly schedule/proposal context
+   - Make focus/task execution actions easy to access from the default route.
+   - Implement a settings interface for MVP operations:
+     - profile/session basics
+     - reminder preferences
+     - calendar and notes integration connection/config status
+     - AI planning controls that keep approval gates intact
 
-2. **Close MVP verification gaps with explicit checklists**
-   - Add a brief “MVP status matrix” doc section for reminders and spouse visibility to mark implemented vs pending with linked endpoints/pages.
+2. **Phase 5 — Calendar + reminder delivery completion**
+   - Finish/verify first calendar adapter read/write path.
+   - Implement reminder worker delivery + response logging loop.
+   - Validate that accepted plan items can become soft calendar blocks.
 
-3. **Phase 5 execution kickoff**
-   - Implement/verify first calendar adapter path and reminder scheduling worker per implementation plan DoD.
+3. **Phase 6 — Spouse visibility UX completion**
+   - Add/verify spouse-facing dashboard flows for relevant schedule context.
+   - Validate private-item suppression in all spouse-visible views.
+   - Validate influence UX and weighting behavior without overriding owner data.
 
-4. **Hardening proof tasks**
-   - Add repeatable backup/restore and deployment verification steps for eventual Phase 7 acceptance.
+4. **Phase 7 — Hardening and deployment proof**
+   - Add repeatable backup/restore verification.
+   - Add baseline operational/security checks (rate limiting, API key flow where applicable).
+   - Produce deployment runbook validation for TrueNAS target.
+
+5. **Tracking update**
+   - Add a concise MVP status matrix in docs with links to implemented endpoints/pages and explicit pending items.
 
 ---
 

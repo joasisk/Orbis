@@ -96,6 +96,26 @@ Definition of done:
 - proposal can be accepted or edited
 - imported note can generate candidate tasks
 
+## Phase 4.5 — Web catch-up and settings UX
+Goal: close MVP usability gaps by wiring existing API capabilities into the day-to-day web experience.
+
+Deliverables:
+- replace static homepage dead-end with API-backed dashboard flows
+- fetch and render Areas of Life, Projects, and Tasks in primary app routes
+- fetch and render daily plan and weekly schedule/proposal context in web UI
+- promote "do now" and focus actions to first-class default navigation path
+- settings interface (owner-focused MVP):
+  - profile/session basics
+  - reminder preferences (within existing MVP reminder scope)
+  - calendar and notes integration connection status/config surface
+  - AI planning controls tied to approval-first guardrails
+
+Definition of done:
+- primary web entry route shows live API data (not placeholder/static-only)
+- user can navigate between tasks, daily plan, and weekly planning context without hidden routes
+- settings page exists and persists configuration through API endpoints
+- no approval gates are bypassed in scheduling/planning interactions
+
 ## Phase 5 — Calendar and reminder integration
 Goal: connect planning to real time and commitments.
 
