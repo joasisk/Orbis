@@ -7,6 +7,8 @@ from app.models import (  # noqa: F401
     AreaOfLife,
     AuditEvent,
     BlockerEvent,
+    CalendarExternalEvent,
+    CalendarSoftBlock,
     DailySchedule,
     DailyScheduleItem,
     EntityVersion,
@@ -24,7 +26,7 @@ from app.models import (  # noqa: F401
     WeeklySchedule,
 )
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -330,6 +332,145 @@ def test_reminder_event_capture_and_response_logging() -> None:
         assert next_proposal_resp.status_code == 200
         telemetry = next_proposal_resp.json()["evaluation_log"]["telemetry_snapshot"]
         assert telemetry["reminder_response_count"] >= 1
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_phase5_calendar_import_and_soft_block_export_requires_acceptance() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        token = _bootstrap_and_token(client)
+        headers = _headers(token)
+        _seed_tasks(client, headers)
+
+        settings_resp = client.patch(
+            "/api/v1/settings/me",
+            headers=headers,
+            json={"calendar_connected": True, "calendar_provider": "mock-calendar"},
+        )
+        assert settings_resp.status_code == 200
+
+        import_resp = client.post(
+            "/api/v1/calendar/events/import",
+            headers=headers,
+            json={"start_date": "2026-04-13", "end_date": "2026-04-17"},
+        )
+        assert import_resp.status_code == 200
+        imported = import_resp.json()
+        assert imported["imported_count"] > 0
+        assert imported["events"][0]["provider_key"] == "mock-calendar"
+
+        proposal_resp = client.post(
+            "/api/v1/planning/weekly-proposals/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13"},
+        )
+        assert proposal_resp.status_code == 200
+        proposal_id = proposal_resp.json()["id"]
+
+        generate_schedule_resp = client.post(
+            "/api/v1/schedules/weeks/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13", "source_proposal_id": proposal_id},
+        )
+        assert generate_schedule_resp.status_code == 200
+        monday = generate_schedule_resp.json()["days"][0]
+
+        export_conflict_resp = client.post(
+            f"/api/v1/calendar/daily-schedules/{monday['id']}/soft-blocks/export",
+            headers=headers,
+        )
+        assert export_conflict_resp.status_code == 409
+
+        accept_day_resp = client.post(f"/api/v1/schedules/days/{monday['id']}/accept", headers=headers)
+        assert accept_day_resp.status_code == 200
+
+        export_resp = client.post(
+            f"/api/v1/calendar/daily-schedules/{monday['id']}/soft-blocks/export",
+            headers=headers,
+        )
+        assert export_resp.status_code == 200
+        exported = export_resp.json()
+        assert exported["exported_count"] == len(exported["blocks"])
+        assert exported["blocks"]
+        assert exported["blocks"][0]["provider_key"] == "mock-calendar"
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_phase5_adaptive_reminder_scheduler_respects_window_and_throttle() -> None:
+    from datetime import UTC, datetime
+
+    from app.services.reminders import ReminderService
+
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        token = _bootstrap_and_token(client)
+        headers = _headers(token)
+        _seed_tasks(client, headers)
+
+        settings_resp = client.patch(
+            "/api/v1/settings/me",
+            headers=headers,
+            json={"reminder_enabled": True, "reminder_window_start": "08:00", "reminder_window_end": "20:00"},
+        )
+        assert settings_resp.status_code == 200
+
+        proposal_resp = client.post(
+            "/api/v1/planning/weekly-proposals/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13"},
+        )
+        assert proposal_resp.status_code == 200
+        proposal_id = proposal_resp.json()["id"]
+
+        generate_schedule_resp = client.post(
+            "/api/v1/schedules/weeks/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13", "source_proposal_id": proposal_id},
+        )
+        assert generate_schedule_resp.status_code == 200
+        monday = generate_schedule_resp.json()["days"][0]
+
+        accept_day_resp = client.post(f"/api/v1/schedules/days/{monday['id']}/accept", headers=headers)
+        assert accept_day_resp.status_code == 200
+
+        db_gen = app.dependency_overrides[get_db]()
+        db = next(db_gen)
+        try:
+            actor = db.scalar(select(User).where(User.email == "owner@example.com"))
+            assert actor is not None
+
+            created_off_hours = ReminderService.schedule_due_events(
+                db=db,
+                actor=actor,
+                now=datetime(2026, 4, 13, 6, 0, tzinfo=UTC),
+            )
+            assert created_off_hours == []
+
+            created_first = ReminderService.schedule_due_events(
+                db=db,
+                actor=actor,
+                now=datetime(2026, 4, 13, 10, 0, tzinfo=UTC),
+            )
+            assert len(created_first) >= 1
+
+            created_second = ReminderService.schedule_due_events(
+                db=db,
+                actor=actor,
+                now=datetime(2026, 4, 13, 10, 20, tzinfo=UTC),
+            )
+            assert created_second == []
+        finally:
+            db.close()
     finally:
         try:
             next(client_gen)

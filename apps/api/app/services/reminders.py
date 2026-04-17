@@ -1,12 +1,13 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.models.planning import DailySchedule, DailyScheduleItem
 from app.models.reminder import ReminderEvent
 from app.models.user import User
+from app.models.user_settings import UserSettings
 from app.schemas.reminders import ReminderEventCreateRequest, ReminderEventResponsePatchRequest
 
 
@@ -68,3 +69,68 @@ class ReminderService:
         db.commit()
         db.refresh(event)
         return event
+
+    @staticmethod
+    def schedule_due_events(db: Session, actor: User, now: datetime | None = None) -> list[ReminderEvent]:
+        current = now or datetime.now(UTC)
+        settings = db.scalar(select(UserSettings).where(UserSettings.owner_user_id == actor.id))
+        if settings is None or not settings.reminder_enabled:
+            return []
+
+        window_start_hour = int(settings.reminder_window_start.split(":")[0])
+        window_end_hour = int(settings.reminder_window_end.split(":")[0])
+        if current.hour < window_start_hour or current.hour >= window_end_hour:
+            return []
+
+        avg_delay_seconds = db.scalar(
+            select(func.avg(ReminderEvent.response_delay_seconds)).where(
+                ReminderEvent.owner_user_id == actor.id,
+                ReminderEvent.response_delay_seconds.is_not(None),
+            )
+        )
+        throttle_minutes = 90 if avg_delay_seconds is None else max(30, min(180, int(avg_delay_seconds // 60)))
+
+        pending_items = list(
+            db.scalars(
+                select(DailyScheduleItem)
+                .join(DailySchedule, DailySchedule.id == DailyScheduleItem.daily_schedule_id)
+                .where(
+                    DailySchedule.owner_user_id == actor.id,
+                    DailySchedule.status.in_(["accepted", "adjusted"]),
+                    DailyScheduleItem.outcome_status == "planned",
+                    DailySchedule.schedule_date <= current.date(),
+                )
+                .order_by(DailySchedule.schedule_date.asc(), DailyScheduleItem.order_index.asc())
+            ).all()
+        )
+
+        created: list[ReminderEvent] = []
+        for item in pending_items:
+            recent_event = db.scalar(
+                select(ReminderEvent)
+                .where(
+                    and_(
+                        ReminderEvent.owner_user_id == actor.id,
+                        ReminderEvent.daily_schedule_item_id == item.id,
+                        ReminderEvent.sent_at >= current - timedelta(minutes=throttle_minutes),
+                    )
+                )
+                .order_by(ReminderEvent.sent_at.desc())
+            )
+            if recent_event is not None:
+                continue
+            event = ReminderEvent(
+                owner_user_id=actor.id,
+                daily_schedule_id=item.daily_schedule_id,
+                daily_schedule_item_id=item.id,
+                delivery_channel="in_app",
+                response_status="pending",
+            )
+            db.add(event)
+            created.append(event)
+
+        if created:
+            db.commit()
+            for event in created:
+                db.refresh(event)
+        return created
