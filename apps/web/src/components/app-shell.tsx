@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { NotificationCandybar, NotificationToast } from "./notification-candybar";
+import { NotificationCenter, ReminderEvent } from "./notification-center";
 
 type NavItem = {
   href: string;
@@ -45,6 +47,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [notifications, setNotifications] = useState<ReminderEvent[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
+  const [toasts, setToasts] = useState<NotificationToast[]>([]);
   const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
   const token = typeof window === "undefined" ? "" : window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
 
@@ -87,6 +94,86 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return letters.slice(0, 2) || "OR";
   }, [displayName]);
 
+  const pushToast = useCallback((message: string, tone: NotificationToast["tone"] = "info") => {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setToasts((current) => [...current, { id, message, tone }]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 6000);
+  }, []);
+
+  const loadNotifications = useCallback(async (accessToken: string, suppressLoading = false) => {
+    if (!accessToken) return;
+    if (!suppressLoading) {
+      setNotificationsLoading(true);
+    }
+    setNotificationsError("");
+
+    const response = await fetch(`${apiBase}/reminders/events`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      setNotificationsLoading(false);
+      setNotificationsError(`Could not load notifications (${response.status}).`);
+      return;
+    }
+
+    const payload = (await response.json()) as ReminderEvent[];
+    const pendingNotifications = payload.filter((entry) => entry.response_status === "pending");
+    setNotifications((previous) => {
+      if (pendingNotifications.length > previous.length) {
+        const delta = pendingNotifications.length - previous.length;
+        pushToast(`${delta} new reminder${delta > 1 ? "s" : ""} received.`, "info");
+      }
+      return pendingNotifications;
+    });
+    setNotificationsLoading(false);
+  }, [pushToast]);
+
+  useEffect(() => {
+    if (authRoute) return;
+    const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
+    if (!accessToken) return;
+
+    void loadNotifications(accessToken);
+    const intervalId = window.setInterval(() => {
+      void loadNotifications(accessToken, true);
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, [authRoute, loadNotifications]);
+
+  const handleReminderAction = async (notificationId: string, action: "acknowledged" | "snoozed" | "dismissed") => {
+    const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
+    if (!accessToken) {
+      pushToast("Sign in to respond to reminders.", "error");
+      return;
+    }
+
+    const response = await fetch(`${apiBase}/reminders/events/${notificationId}/response`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ response_status: action }),
+    });
+
+    if (!response.ok) {
+      pushToast(`Could not update reminder (${response.status}).`, "error");
+      return;
+    }
+
+    setNotifications((current) => current.filter((notification) => notification.id !== notificationId));
+    pushToast(
+      action === "acknowledged"
+        ? "Reminder acknowledged."
+        : action === "snoozed"
+          ? "Reminder snoozed."
+          : "Reminder dismissed.",
+      "success",
+    );
+  };
+
   const handleLogout = async () => {
     const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_KEY) ?? "";
     if (refreshToken) {
@@ -123,6 +210,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
+          <button className="app-shell__notification-button" type="button" onClick={() => setNotificationCenterOpen((open) => !open)}>
+            <span className="material-symbols-outlined" aria-hidden>
+              notifications
+            </span>
+            <span>Notifications</span>
+            {notifications.length ? <span className="app-shell__notification-count">{notifications.length}</span> : null}
+          </button>
+
           <nav className="app-shell__nav" aria-label="Primary">
             {navItems.map((item) => {
               const isActive = item.match ? item.match(pathname) : pathname.startsWith(item.href);
@@ -150,6 +245,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="app-shell__main">{children}</main>
+      <NotificationCenter
+        isOpen={notificationCenterOpen}
+        isLoading={notificationsLoading}
+        error={notificationsError}
+        notifications={notifications}
+        onClose={() => setNotificationCenterOpen(false)}
+        onRespond={handleReminderAction}
+      />
+      <NotificationCandybar toasts={toasts} onDismiss={(toastId) => setToasts((current) => current.filter((toast) => toast.id !== toastId))} />
     </div>
   );
 }
