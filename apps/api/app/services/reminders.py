@@ -12,6 +12,13 @@ from app.schemas.reminders import ReminderEventCreateRequest, ReminderEventRespo
 
 class ReminderService:
     @staticmethod
+    def list_events(db: Session, actor: User, response_status: str | None = "pending") -> list[ReminderEvent]:
+        stmt = select(ReminderEvent).where(ReminderEvent.owner_user_id == actor.id)
+        if response_status is not None:
+            stmt = stmt.where(ReminderEvent.response_status == response_status)
+        return list(db.scalars(stmt.order_by(ReminderEvent.sent_at.desc())))
+
+    @staticmethod
     def create_event(db: Session, actor: User, payload: ReminderEventCreateRequest) -> ReminderEvent:
         if payload.daily_schedule_id is None and payload.daily_schedule_item_id is None:
             raise HTTPException(status_code=422, detail="daily_schedule_id or daily_schedule_item_id is required")

@@ -1,13 +1,28 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import require_roles
 from app.models.user import User
-from app.schemas.reminders import ReminderEventCreateRequest, ReminderEventResponse, ReminderEventResponsePatchRequest
+from app.schemas.reminders import (
+    ReminderEventCreateRequest,
+    ReminderEventResponse,
+    ReminderEventResponsePatchRequest,
+    ReminderResponseStatus,
+)
 from app.services.reminders import ReminderService
 
 router = APIRouter(tags=["reminders"])
+
+
+@router.get("/reminders/events", response_model=list[ReminderEventResponse])
+def list_reminder_events(
+    response_status: ReminderResponseStatus | None = Query(default="pending"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("owner")),
+) -> list[ReminderEventResponse]:
+    reminders = ReminderService.list_events(db=db, actor=current_user, response_status=response_status)
+    return [ReminderEventResponse.model_validate(reminder, from_attributes=True) for reminder in reminders]
 
 
 @router.post("/reminders/events", response_model=ReminderEventResponse)
