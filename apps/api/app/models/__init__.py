@@ -1,4 +1,5 @@
 from app.models.audit_event import AuditEvent
+from app.models.calendar import CalendarExternalEvent, CalendarSoftBlock
 from app.models.domain import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
 from app.models.focus import BlockerEvent, FocusSession
 from app.models.planning import (
@@ -18,6 +19,8 @@ __all__ = [
     "User",
     "SessionToken",
     "AuditEvent",
+    "CalendarExternalEvent",
+    "CalendarSoftBlock",
     "AreaOfLife",
     "Project",
     "Task",
