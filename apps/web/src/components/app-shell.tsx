@@ -47,18 +47,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
-  const [token, setToken] = useState("");
   const [notifications, setNotifications] = useState<ReminderEvent[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState("");
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const [toasts, setToasts] = useState<NotificationToast[]>([]);
   const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setToken(window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "");
-  }, [pathname]);
 
   const clearAuthState = useCallback((redirectToLogin = true) => {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -234,7 +228,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="app-shell__avatar" aria-hidden>
               {avatarLabel}
             </div>
-            <button className="app-shell__user-button" onClick={handleLogout} type="button" disabled={!token}>
+            <button className="app-shell__user-button" onClick={handleLogout} type="button" disabled={!me?.email}>
               <span className="app-shell__user-name">{displayName}</span>
               <span className="app-shell__user-email">{me?.email ?? "Sign in to continue"}</span>
             </button>
