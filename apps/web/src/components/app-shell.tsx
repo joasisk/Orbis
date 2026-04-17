@@ -47,13 +47,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [token, setToken] = useState("");
   const [notifications, setNotifications] = useState<ReminderEvent[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState("");
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const [toasts, setToasts] = useState<NotificationToast[]>([]);
   const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
-  const token = typeof window === "undefined" ? "" : window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setToken(window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "");
+  }, [pathname]);
 
   useEffect(() => {
     if (authRoute) return;
@@ -186,6 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
     window.localStorage.removeItem(REFRESH_TOKEN_KEY);
     document.cookie = `${ACCESS_TOKEN_COOKIE}=; Max-Age=0; Path=/`;
+    setToken("");
     setMe(null);
     router.push("/login");
   };
