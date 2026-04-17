@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Area = { id: string; name: string; description: string | null };
@@ -146,6 +147,18 @@ export function HomeDashboard() {
         <button className="btn btn-primary" type="button" onClick={loadDashboard}>
           Refresh dashboard
         </button>
+      </div>
+
+      <div className="button-row" style={{ marginTop: "1rem" }}>
+        <Link className="btn btn-secondary" href="/schedule">
+          Open weekly schedule
+        </Link>
+        <Link className="btn btn-secondary" href="/tasks">
+          Open tasks
+        </Link>
+        <Link className="btn btn-secondary" href="/projects">
+          Open projects
+        </Link>
       </div>
 
       <div className="organic-grid" style={{ marginTop: "1rem" }}>
