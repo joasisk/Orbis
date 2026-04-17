@@ -21,16 +21,28 @@ const navItems: NavItem[] = [
     match: (pathname) => pathname === "/",
   },
   {
-    href: "/tasks",
+    href: "/schedule",
     label: "Week",
     icon: "calendar_month",
+    match: (pathname) => pathname.startsWith("/schedule"),
+  },
+  {
+    href: "/tasks",
+    label: "Tasks",
+    icon: "checklist",
     match: (pathname) => pathname.startsWith("/tasks"),
   },
   {
     href: "/projects",
-    label: "Scope",
-    icon: "explore",
+    label: "Projects",
+    icon: "folder",
     match: (pathname) => pathname.startsWith("/projects"),
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: "settings",
+    match: (pathname) => pathname.startsWith("/settings"),
   },
 ];
 
