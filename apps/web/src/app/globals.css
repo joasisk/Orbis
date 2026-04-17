@@ -405,6 +405,32 @@ a {
   gap: 0.55rem;
 }
 
+.app-shell__notification-button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-content: space-between;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0.75rem 0.95rem;
+  color: var(--on-surface);
+  background: color-mix(in oklab, var(--surface-container-highest) 75%, transparent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-shell__notification-count {
+  min-width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .app-shell__nav-item {
   display: flex;
   align-items: center;
@@ -440,6 +466,119 @@ a {
 .app-shell__main {
   min-width: 0;
   padding: 2.5rem 2.8rem;
+}
+
+.notification-center {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border-radius: 1.2rem;
+  background: color-mix(in oklab, var(--surface-container-low) 88%, white);
+  box-shadow: 0 30px 60px rgba(55, 58, 28, 0.14);
+  z-index: 50;
+}
+
+.notification-center__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.notification-center__close {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.notification-center__list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.notification-center__item {
+  border-radius: 1rem;
+  padding: 0.85rem;
+  background: var(--surface-container-lowest);
+}
+
+.notification-center__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.notification-center__meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: color-mix(in oklab, var(--on-surface) 70%, transparent);
+}
+
+.notification-center__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.notification-candybar {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.6rem;
+  z-index: 60;
+}
+
+.notification-candybar__toast {
+  min-width: 16rem;
+  max-width: min(24rem, calc(100vw - 2rem));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.8rem;
+  box-shadow: 0 12px 24px rgba(55, 58, 28, 0.12);
+}
+
+.notification-candybar__toast p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.notification-candybar__toast button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.notification-candybar__toast--info {
+  background: var(--surface-container);
+}
+
+.notification-candybar__toast--success {
+  background: color-mix(in oklab, var(--primary-container) 55%, white);
+}
+
+.notification-candybar__toast--error {
+  background: var(--error-container);
+  color: var(--on-error-container);
 }
 
 .shell-page {
