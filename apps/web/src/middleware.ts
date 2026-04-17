@@ -9,15 +9,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasAccessToken = Boolean(request.cookies.get("orbis_access_token")?.value);
   const isPublicPath = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-
-  if (!hasAccessToken && !isPublicPath) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (isPublicPath) {
+    return NextResponse.next();
   }
 
-  if (hasAccessToken && isPublicPath) {
-    return NextResponse.redirect(new URL("/", request.url));
+  const hasAccessToken = Boolean(request.cookies.get("orbis_access_token")?.value);
+  if (!hasAccessToken) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();

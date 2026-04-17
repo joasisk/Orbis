@@ -301,6 +301,12 @@ def test_reminder_event_capture_and_response_logging() -> None:
         reminder = create_reminder_resp.json()
         assert reminder["response_status"] == "pending"
 
+        list_pending_resp = client.get("/api/v1/reminders/events", headers=headers)
+        assert list_pending_resp.status_code == 200
+        pending_events = list_pending_resp.json()
+        assert len(pending_events) == 1
+        assert pending_events[0]["id"] == reminder["id"]
+
         response_resp = client.patch(
             f"/api/v1/reminders/events/{reminder['id']}/response",
             headers=headers,
@@ -311,6 +317,10 @@ def test_reminder_event_capture_and_response_logging() -> None:
         assert responded["response_status"] == "acknowledged"
         assert responded["responded_at"] is not None
         assert responded["response_delay_seconds"] is not None
+
+        list_after_response_resp = client.get("/api/v1/reminders/events", headers=headers)
+        assert list_after_response_resp.status_code == 200
+        assert list_after_response_resp.json() == []
 
         next_proposal_resp = client.post(
             "/api/v1/planning/weekly-proposals/generate",

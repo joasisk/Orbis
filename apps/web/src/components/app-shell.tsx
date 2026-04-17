@@ -60,23 +60,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setToken(window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "");
   }, [pathname]);
 
+  const clearAuthState = useCallback((redirectToLogin = true) => {
+    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    document.cookie = `${ACCESS_TOKEN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+    document.cookie = `${ACCESS_TOKEN_COOKIE}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; SameSite=Lax`;
+    setMe(null);
+    setNotifications([]);
+    setNotificationCenterOpen(false);
+    if (redirectToLogin) {
+      router.replace("/login");
+    }
+  }, [router]);
+
   useEffect(() => {
     if (authRoute) return;
     const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
-    if (!accessToken) return;
+    if (!accessToken) {
+      clearAuthState();
+      return;
+    }
 
     const loadMe = async () => {
       const response = await fetch(`${apiBase}/users/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearAuthState();
+        }
+        return;
+      }
       const payload = (await response.json()) as MeResponse;
       setMe(payload);
     };
 
     void loadMe();
-  }, [authRoute]);
+  }, [authRoute, clearAuthState]);
 
   const displayName = useMemo(() => {
     if (!me?.email) return "Your account";
@@ -120,6 +141,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        clearAuthState();
+        return;
+      }
       setNotificationsLoading(false);
       setNotificationsError(`Could not load notifications (${response.status}).`);
       return;
@@ -135,7 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return pendingNotifications;
     });
     setNotificationsLoading(false);
-  }, [pushToast]);
+  }, [clearAuthState, pushToast]);
 
   useEffect(() => {
     if (authRoute) return;
@@ -164,6 +189,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        clearAuthState();
+        return;
+      }
       pushToast(`Could not update reminder (${response.status}).`, "error");
       return;
     }
@@ -188,12 +217,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
     }
-    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-    window.localStorage.removeItem(REFRESH_TOKEN_KEY);
-    document.cookie = `${ACCESS_TOKEN_COOKIE}=; Max-Age=0; Path=/`;
-    setToken("");
-    setMe(null);
-    router.push("/login");
+    clearAuthState();
   };
 
   if (authRoute) {
