@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_roles
 from app.models.user import User
 from app.schemas.domain import (
     AreaCreate,
@@ -18,6 +18,7 @@ from app.schemas.domain import (
     TaskDependencyCreate,
     TaskDependencyRead,
     TaskRead,
+    TaskSpouseInfluenceUpdate,
     TaskUpdate,
     VersionResponse,
 )
@@ -137,6 +138,17 @@ def update_task(
     current_user: User = Depends(get_current_user),
 ) -> TaskRead:
     row = DomainService.update_task(db, current_user, task_id, payload.model_dump(exclude_unset=True))
+    return TaskRead.model_validate(row, from_attributes=True)
+
+
+@router.patch("/tasks/{task_id}/spouse-influence", response_model=TaskRead)
+def update_task_spouse_influence(
+    task_id: str,
+    payload: TaskSpouseInfluenceUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("spouse")),
+) -> TaskRead:
+    row = DomainService.update_task_spouse_influence(db, current_user, task_id, payload.model_dump(exclude_unset=True))
     return TaskRead.model_validate(row, from_attributes=True)
 
 

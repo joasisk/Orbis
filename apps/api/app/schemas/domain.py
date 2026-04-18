@@ -120,6 +120,13 @@ class TaskUpdate(BaseModel):
     visibility_scope: VisibilityScope | None = None
 
 
+class TaskSpouseInfluenceUpdate(BaseModel):
+    spouse_priority: int | None = Field(default=None, ge=0, le=10)
+    spouse_urgency: int | None = Field(default=None, ge=0, le=10)
+    spouse_deadline: datetime | None = None
+    spouse_deadline_type: DeadlineType | None = None
+
+
 class TaskRead(TaskBase):
     id: str
     owner_user_id: str

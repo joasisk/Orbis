@@ -228,6 +228,32 @@ class DomainService:
         return entity
 
     @staticmethod
+    def update_task_spouse_influence(db: Session, actor: User, task_id: str, payload: dict[str, Any]) -> Task:
+        entity = DomainService.get_task(db, actor, task_id)
+        if actor.role != "spouse":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        allowed_fields = {"spouse_priority", "spouse_urgency", "spouse_deadline", "spouse_deadline_type"}
+        changes = {}
+        for key, value in payload.items():
+            if key not in allowed_fields:
+                continue
+            if getattr(entity, key) != value:
+                changes[key] = {"from": getattr(entity, key), "to": value}
+                setattr(entity, key, value)
+        DomainService._log_version(
+            db,
+            entity.owner_user_id,
+            "task",
+            entity.id,
+            actor.id,
+            "spouse_influence_update",
+            changes,
+        )
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
     def delete_task(db: Session, actor: User, task_id: str) -> None:
         entity = DomainService.get_task(db, actor, task_id)
         DomainService._ensure_owner_only(actor, entity.owner_user_id)
