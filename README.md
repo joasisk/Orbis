@@ -29,6 +29,10 @@ Self-hosted, AI-assisted time and project management system optimized for ADHD u
 3. Verify health checks:
    - API: `http://localhost/api/v1/health`
    - Web: `http://localhost/api/health`
+4. Open API docs (Swagger UI):
+   - `http://localhost/docs`
+
+For full Swagger/OpenAPI usage instructions, see `docs/API_SWAGGER.md`.
 
 ## Initial development order
 1. Bring up local infra

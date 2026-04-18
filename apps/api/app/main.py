@@ -25,7 +25,25 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Orbis API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Orbis API",
+    summary="API-first backend for Orbis time and project management",
+    description=(
+        "Orbis provides AI-assisted project, task, and schedule orchestration for ADHD-friendly "
+        "planning workflows.\n\n"
+        "This OpenAPI document covers the MVP REST surface consumed by first-party and "
+        "third-party clients."
+    ),
+    version="0.1.0",
+    contact={"name": "Orbis API Team"},
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Liveness and dependency health checks for API and orchestration layers.",
+        }
+    ],
+    lifespan=lifespan,
+)
 
 
 @app.exception_handler(OperationalError)
