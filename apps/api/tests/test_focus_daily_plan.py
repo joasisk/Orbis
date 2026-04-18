@@ -183,3 +183,73 @@ def test_daily_plan_is_deterministic_for_same_input() -> None:
             next(client_gen)
         except StopIteration:
             pass
+
+
+def test_daily_plan_applies_critical_household_weighting_for_spouse_influence() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        owner_token = _bootstrap_and_token(client)
+        owner_headers = _headers(owner_token)
+
+        spouse_create_response = client.post(
+            "/api/v1/users/spouse",
+            headers=owner_headers,
+            json={"email": "spouse@example.com", "password": "Password123!"},
+        )
+        assert spouse_create_response.status_code == 201
+        spouse_login_response = client.post(
+            "/api/v1/auth/login",
+            json={"email": "spouse@example.com", "password": "Password123!"},
+        )
+        assert spouse_login_response.status_code == 200
+        spouse_headers = _headers(spouse_login_response.json()["access_token"])
+
+        area_resp = client.post("/api/v1/areas", headers=owner_headers, json={"name": "Home"})
+        assert area_resp.status_code == 201
+        project_resp = client.post(
+            "/api/v1/projects",
+            headers=owner_headers,
+            json={"area_id": area_resp.json()["id"], "name": "Household", "is_private": False, "visibility_scope": "shared"},
+        )
+        assert project_resp.status_code == 201
+        project_id = project_resp.json()["id"]
+
+        baseline_task_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={"project_id": project_id, "title": "Routine cleanup", "priority": 5, "urgency": 5},
+        )
+        assert baseline_task_resp.status_code == 201
+
+        household_critical_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={"project_id": project_id, "title": "Fix nursery heater", "priority": 5, "urgency": 5},
+        )
+        assert household_critical_resp.status_code == 201
+        household_critical_id = household_critical_resp.json()["id"]
+
+        spouse_update_resp = client.patch(
+            f"/api/v1/tasks/{household_critical_id}/spouse-influence",
+            headers=spouse_headers,
+            json={
+                "spouse_priority": 9,
+                "spouse_urgency": 8,
+                "spouse_deadline": (datetime.now(UTC) + timedelta(hours=12)).isoformat(),
+                "spouse_deadline_type": "hard",
+            },
+        )
+        assert spouse_update_resp.status_code == 200
+
+        ranking_resp = client.get("/api/v1/planning/daily-plan", headers=owner_headers, params={"limit": 5, "current_energy": 6})
+        assert ranking_resp.status_code == 200
+        ranking = ranking_resp.json()["recommendations"]
+        assert ranking[0]["task_id"] == household_critical_id
+        assert "critical_household_weight_applied" in ranking[0]["reasons"]
+        assert ranking[0]["score_breakdown"]["spouse_influence"] > 0
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass

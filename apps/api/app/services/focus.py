@@ -278,10 +278,37 @@ class FocusService:
             if task.urgency >= 7:
                 reasons.append("high_urgency")
 
-        if task.spouse_priority is not None:
-            breakdown.spouse_influence += float(task.spouse_priority) * 2
-            if task.spouse_priority >= 7:
-                reasons.append("high_spouse_priority")
+        spouse_priority = float(task.spouse_priority) if task.spouse_priority is not None else 0.0
+        spouse_urgency = float(task.spouse_urgency) if task.spouse_urgency is not None else 0.0
+        spouse_deadline_pressure = 0.0
+        if task.spouse_deadline is not None:
+            spouse_deadline = task.spouse_deadline
+            if spouse_deadline.tzinfo is None:
+                spouse_deadline = spouse_deadline.replace(tzinfo=UTC)
+            spouse_days_until = (spouse_deadline - datetime.now(UTC)).total_seconds() / 86400
+            if task.spouse_deadline_type == "hard":
+                if spouse_days_until <= 1:
+                    spouse_deadline_pressure = 26.0
+                    reasons.append("spouse_hard_deadline_within_24h")
+                elif spouse_days_until <= 3:
+                    spouse_deadline_pressure = 18.0
+                    reasons.append("spouse_hard_deadline_soon")
+            elif spouse_days_until <= 3:
+                spouse_deadline_pressure = 8.0
+                reasons.append("spouse_soft_deadline_soon")
+
+        critical_household_signal = (
+            spouse_priority >= 8 or spouse_urgency >= 8 or (task.spouse_deadline_type == "hard" and spouse_deadline_pressure > 0)
+        )
+        spouse_weight = 1.75 if critical_household_signal else 1.0
+        spouse_influence_raw = (spouse_priority * 2.0) + (spouse_urgency * 1.5) + spouse_deadline_pressure
+        breakdown.spouse_influence += spouse_influence_raw * spouse_weight
+        if spouse_priority >= 7:
+            reasons.append("high_spouse_priority")
+        if spouse_urgency >= 7:
+            reasons.append("high_spouse_urgency")
+        if critical_household_signal and spouse_influence_raw > 0:
+            reasons.append("critical_household_weight_applied")
 
         unresolved_dependencies = 0
         for dep in task_dependencies:
