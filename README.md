@@ -84,3 +84,9 @@ ADR records are stored under `docs/adr/`.
     docker compose down -v
     docker compose up --build
     ```
+
+## Phase 7 hardening baseline
+- Sensitive auth endpoint rate limiting is configurable with `API_RATE_LIMIT_REQUESTS` and `API_RATE_LIMIT_WINDOW_SECONDS`.
+- Owner-managed API keys are available at `/api/v1/api-keys` and can be used with `X-API-Key` for external clients.
+- Backup and restore scripts: `infra/scripts/backup.sh` and `infra/scripts/restore.sh`.
+- Deployment runbook: `docs/PHASE7_HARDENING_AND_TRUENAS.md`.

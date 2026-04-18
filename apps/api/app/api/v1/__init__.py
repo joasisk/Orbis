@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.api_keys import router as api_keys_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.calendar import router as calendar_router
 from app.api.v1.domain import router as domain_router
@@ -11,6 +12,7 @@ from app.api.v1.users import router as users_router
 
 router = APIRouter()
 router.include_router(auth_router)
+router.include_router(api_keys_router)
 router.include_router(calendar_router)
 router.include_router(users_router)
 router.include_router(domain_router)
