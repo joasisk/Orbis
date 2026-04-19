@@ -44,6 +44,7 @@ When instructions conflict, prefer the highest item in this list unless an expli
 3. Propose/implement the **smallest** viable change.
 4. Update tests and/or provide executable validation steps.
 5. If behavior/contract changes, update docs and ADRs as needed.
+6. After implementing plan items, migrate completed work into implementation/actual-state documentation and remove or mark completed items in planning and gap-analysis docs so plans stay current and non-obsolete.
 
 ## Quality bar
 Before finishing, run the most relevant checks:
