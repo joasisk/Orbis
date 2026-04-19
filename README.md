@@ -30,22 +30,10 @@ Before implementing features, use this project source-of-truth order:
 
 For a full directory guide, see [`docs/REPO_STRUCTURE.md`](docs/REPO_STRUCTURE.md).
 
-## Quick start (local)
-1. Copy environment file:
-   ```bash
-   cp .env.example .env
-   ```
-2. Start services:
-   ```bash
-   docker compose up --build
-   ```
-3. Verify health endpoints:
-   - API: `http://localhost/api/v1/health`
-   - Web: `http://localhost/api/health`
-4. Open API docs:
-   - Swagger UI: `http://localhost/docs`
-
-For API docs workflow details, see [`docs/API_SWAGGER.md`](docs/API_SWAGGER.md).
+## Getting started
+- Usage guide: [`docs/USAGE.md`](docs/USAGE.md)
+- Development setup: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- API docs workflow details: [`docs/API_SWAGGER.md`](docs/API_SWAGGER.md)
 
 ## Key documentation
 ### Product and planning
@@ -60,8 +48,13 @@ For API docs workflow details, see [`docs/API_SWAGGER.md`](docs/API_SWAGGER.md).
 - API strategy: [`docs/API_STRATEGY.md`](docs/API_STRATEGY.md)
 - ADR index: [`docs/adr/`](docs/adr/)
 
-### Delivery and operations
-- Local/prod hardening + TrueNAS: [`docs/PHASE7_HARDENING_AND_TRUENAS.md`](docs/PHASE7_HARDENING_AND_TRUENAS.md)
+### Usage and operations
+- Usage guide: [`docs/USAGE.md`](docs/USAGE.md)
+- TrueNAS setup guide: [`docs/TRUENAS_SETUP.md`](docs/TRUENAS_SETUP.md)
+- Local/prod hardening runbook: [`docs/PHASE7_HARDENING_AND_TRUENAS.md`](docs/PHASE7_HARDENING_AND_TRUENAS.md)
+
+### Development
+- Development setup and checks: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 - Roadmap/issues planning: [`docs/GITHUB_ISSUES_ROADMAP.md`](docs/GITHUB_ISSUES_ROADMAP.md)
 - AI contributor workflow: [`docs/AI_AGENT_GUIDE.md`](docs/AI_AGENT_GUIDE.md)
 
@@ -70,21 +63,7 @@ For API docs workflow details, see [`docs/API_SWAGGER.md`](docs/API_SWAGGER.md).
 - Phase 8 SDK plan: [`docs/PHASE8_PUBLIC_SDK.md`](docs/PHASE8_PUBLIC_SDK.md)
 
 ## Development quality checks
-### API
-```bash
-cd apps/api
-pip install -r requirements.txt
-ruff check app tests
-ruff format --check app tests
-```
-
-### Web
-```bash
-cd apps/web
-npm ci
-npm run lint
-npm run typecheck
-```
+See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ## Troubleshooting
 - **`502 Bad Gateway` on `/api/*` in local dev**
