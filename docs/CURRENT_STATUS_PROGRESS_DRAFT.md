@@ -73,9 +73,11 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
 - Approval gate behavior is represented in API surface (proposal then approve).
 
 ## Phase 5 — Calendar and reminders
-**Status:** ❌ Not yet delivered (or not evidenced in current checks)
+**Status:** ✅ Delivered in API/worker baseline
 
-- No verified end-to-end implementation evidence collected in this assessment for calendar read/write adapter and reminder worker behavior.
+- Calendar integration endpoints support importing external events and exporting accepted daily schedule items as soft blocks (proposed schedules are blocked from export).
+- Reminder worker scan path creates adaptive reminder events within owner-configured windows and records delivery/response audit events tied to schedule/day-item identifiers.
+- Planner telemetry snapshot consumes reminder response metrics for future scheduling feedback loops.
 
 ## Phase 6 — Wife visibility and influence UX
 **Status:** ⚠️ Data model support present; dedicated spouse UX maturity unclear
@@ -95,7 +97,7 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
 
 - **Project/task tracking:** ✅ Implemented (API + web baseline pages).
 - **AI weekly planning:** ✅ Implemented at baseline workflow level (proposal + approval endpoints + tests).
-- **Reminders:** ❌ Not yet verified as implemented.
+- **Reminders:** ✅ Implemented and verified in API/worker baseline.
 - **Focus mode:** ⚠️ Implemented in backend and component-level web UI, but not surfaced as default homepage experience.
 - **Wife visibility:** ⚠️ Partial evidence via data model/permissions; full UX still needs explicit verification.
 
@@ -128,9 +130,9 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
      - AI planning controls that keep approval gates intact
 
 2. **Phase 5 — Calendar + reminder delivery completion**
-   - Finish/verify first calendar adapter read/write path.
-   - Implement reminder worker delivery + response logging loop.
-   - Validate that accepted plan items can become soft calendar blocks.
+   - ✅ First calendar adapter read/write path is in place.
+   - ✅ Reminder worker delivery + response logging loop is in place.
+   - ✅ Accepted plan items can become soft calendar blocks.
 
 3. **Phase 6 — Spouse visibility UX completion**
    - Add/verify spouse-facing dashboard flows for relevant schedule context.
@@ -151,4 +153,4 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
 
 - **High confidence:** phases 1–4 backend baseline capabilities exist and pass automated checks.
 - **Medium confidence:** end-user day-to-day workflow polish in web (especially focus-first entry experience).
-- **Lower confidence:** phase 5+ operational features, pending explicit implementation/verification evidence.
+- **Lower confidence:** phase 6+ UX and operational hardening tracks, pending explicit completion evidence.

@@ -324,6 +324,25 @@ def test_reminder_event_capture_and_response_logging() -> None:
         assert list_after_response_resp.status_code == 200
         assert list_after_response_resp.json() == []
 
+        db_gen = app.dependency_overrides[get_db]()
+        db = next(db_gen)
+        try:
+            owner = db.scalar(select(User).where(User.email == "owner@example.com"))
+            assert owner is not None
+            reminder_audit_rows = list(
+                db.scalars(
+                    select(AuditEvent)
+                    .where(
+                        AuditEvent.actor_user_id == owner.id,
+                        AuditEvent.event_type.in_(["reminder.event_created", "reminder.response_recorded"]),
+                    )
+                    .order_by(AuditEvent.created_at.asc())
+                ).all()
+            )
+            assert len(reminder_audit_rows) >= 2
+        finally:
+            db.close()
+
         next_proposal_resp = client.post(
             "/api/v1/planning/weekly-proposals/generate",
             headers=headers,
@@ -469,6 +488,17 @@ def test_phase5_adaptive_reminder_scheduler_respects_window_and_throttle() -> No
                 now=datetime(2026, 4, 13, 10, 20, tzinfo=UTC),
             )
             assert created_second == []
+
+            delivered_logs = list(
+                db.scalars(
+                    select(AuditEvent).where(
+                        AuditEvent.actor_user_id == actor.id,
+                        AuditEvent.event_type == "reminder.delivered",
+                    )
+                ).all()
+            )
+            assert len(delivered_logs) == len(created_first)
+            assert delivered_logs[0].event_metadata["daily_schedule_item_id"] is not None
         finally:
             db.close()
     finally:
