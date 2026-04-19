@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+UiLanguage = Literal["en", "sk"]
 
 
 class UserSettingsResponse(BaseModel):
@@ -15,6 +18,7 @@ class UserSettingsResponse(BaseModel):
     ai_auto_generate_weekly: bool
     ai_require_manual_approval: bool
     ai_preferred_provider: str | None
+    ui_language: UiLanguage
     session_note: str | None
     created_at: datetime
     updated_at: datetime
@@ -32,6 +36,7 @@ class UserSettingsPatchRequest(BaseModel):
     ai_auto_generate_weekly: bool | None = None
     ai_require_manual_approval: bool | None = None
     ai_preferred_provider: str | None = Field(default=None, max_length=64)
+    ui_language: UiLanguage | None = None
     session_note: str | None = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
