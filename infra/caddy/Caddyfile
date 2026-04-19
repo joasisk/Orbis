@@ -1,6 +1,12 @@
 :80 {
   @api path /api/*
+  @api_docs path /docs /docs/*
+  @api_openapi path /openapi.json
+  @api_redoc path /redoc /redoc/*
 
   reverse_proxy @api api:8000
+  reverse_proxy @api_docs api:8000
+  reverse_proxy @api_openapi api:8000
+  reverse_proxy @api_redoc api:8000
   reverse_proxy web:3000
 }
