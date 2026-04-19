@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { openTaskModal, TaskModalHost } from "@/components/entity-management";
 
 type NavItem = {
   href: string;
@@ -156,6 +157,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
+        <button className="app-button app-button--primary sidebar-cta" type="button" onClick={() => openTaskModal({ mode: "create" })}>
+          Add Task
+        </button>
+
         <div className="sidebar-user" onClick={(event) => event.stopPropagation()}>
           <button className="user-trigger" type="button" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen}>
             <span className="avatar">{avatarLabel}</span>
@@ -175,6 +180,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="content-region">{children}</main>
+      <TaskModalHost />
     </div>
   );
 }

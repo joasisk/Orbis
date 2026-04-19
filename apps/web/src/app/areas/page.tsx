@@ -1,5 +1,5 @@
-import { EntityManagement } from "@/components/entity-management";
+import { redirect } from "next/navigation";
 
 export default function AreasPage() {
-  return <EntityManagement entityType="areas" />;
+  redirect("/projects");
 }
