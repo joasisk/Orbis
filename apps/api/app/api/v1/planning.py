@@ -15,6 +15,7 @@ from app.schemas.planning import (
     NoteExtractionDecisionRequest,
     NoteExtractionPreviewRequest,
     NoteExtractionResponse,
+    SpouseDashboardResponse,
     WeeklyPlanApproveRequest,
     WeeklyPlanGenerateRequest,
     WeeklyPlanProposalResponse,
@@ -129,6 +130,15 @@ def get_daily_schedule(
     schedule_date: date, db: Session = Depends(get_db), current_user: User = Depends(require_roles("owner"))
 ) -> DailyScheduleResponse:
     return PlanningService.get_daily_schedule_by_date(db=db, actor=current_user, schedule_date=schedule_date)
+
+
+@router.get("/schedules/spouse-dashboard", response_model=SpouseDashboardResponse)
+def get_spouse_dashboard(
+    week_start_date: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("spouse")),
+) -> SpouseDashboardResponse:
+    return PlanningService.spouse_dashboard_by_week(db=db, actor=current_user, week_start_date=week_start_date)
 
 
 @router.post("/schedules/days/{daily_schedule_id}/accept", response_model=DailyScheduleResponse)
