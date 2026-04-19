@@ -34,16 +34,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
   const { language } = useUiLanguage();
   const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
-  const navItems: NavItem[] = useMemo(() => ([
-    { href: "/", label: translate(language, "burn"), match: (path) => path === "/" },
-    { href: "/schedule", label: translate(language, "trajectory"), match: (path) => path.startsWith("/schedule") },
-    { href: "/areas", label: translate(language, "orbits"), match: (path) => path.startsWith("/areas") },
-    {
-      href: "/projects",
-      label: translate(language, "longTermPlan"),
-      match: (path) => path.startsWith("/projects") || path.startsWith("/tasks"),
-    },
-  ]), [language]);
+  const navItems: NavItem[] = useMemo(() => {
+    const baseItems: NavItem[] = [
+      { href: "/", label: translate(language, "burn"), match: (path) => path === "/" },
+      { href: "/schedule", label: translate(language, "trajectory"), match: (path) => path.startsWith("/schedule") },
+      { href: "/areas", label: translate(language, "orbits"), match: (path) => path.startsWith("/areas") },
+      {
+        href: "/projects",
+        label: translate(language, "longTermPlan"),
+        match: (path) => path.startsWith("/projects") || path.startsWith("/tasks"),
+      },
+    ];
+    if (me?.role === "spouse") {
+      baseItems.push({ href: "/spouse", label: "Spouse Dashboard", match: (path) => path.startsWith("/spouse") });
+    }
+    return baseItems;
+  }, [language, me?.role]);
 
   const clearAuthState = useCallback((redirectToLogin = true) => {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -163,9 +169,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <button className="app-button app-button--primary sidebar-cta" type="button" onClick={() => openTaskModal({ mode: "create" })}>
-          {translate(language, "addTask")}
-        </button>
+        {me?.role === "owner" ? (
+          <button className="app-button app-button--primary sidebar-cta" type="button" onClick={() => openTaskModal({ mode: "create" })}>
+            {translate(language, "addTask")}
+          </button>
+        ) : null}
 
         <div className="sidebar-user" onClick={(event) => event.stopPropagation()}>
           <button className="user-trigger" type="button" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen}>

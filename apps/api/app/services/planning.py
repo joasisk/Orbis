@@ -25,6 +25,9 @@ from app.schemas.planning import (
     NoteExtractionDecisionRequest,
     NoteExtractionResponse,
     NoteTaskCandidateResponse,
+    SpouseDashboardDayResponse,
+    SpouseDashboardItemResponse,
+    SpouseDashboardResponse,
     WeeklyPlanApproveRequest,
     WeeklyPlanGenerateRequest,
     WeeklyPlanItemResponse,
@@ -33,11 +36,14 @@ from app.schemas.planning import (
     WeeklyScheduleResponse,
 )
 from app.services.ai import PROMPT_TEMPLATE_VERSION, get_default_provider
+from app.services.domain import DomainService
 
 TERMINAL_TASK_STATUSES = {"done", "completed", "cancelled", "archived"}
 
 
 class PlanningService:
+    LOW_IMPORTANCE_THRESHOLD = 5
+
     @staticmethod
     def generate_weekly_proposal(db: Session, actor: User, payload: WeeklyPlanGenerateRequest) -> WeeklyPlanProposalResponse:
         provider = get_default_provider()
@@ -368,6 +374,76 @@ class PlanningService:
         return PlanningService._daily_schedule_response(db, schedule)
 
     @staticmethod
+    def spouse_dashboard_by_week(
+        db: Session,
+        actor: User,
+        week_start_date: date | None,
+    ) -> SpouseDashboardResponse:
+        week_query = select(WeeklySchedule).where(WeeklySchedule.status == "accepted")
+        if week_start_date is not None:
+            week_query = week_query.where(WeeklySchedule.week_start_date == week_start_date)
+        weekly_schedule = db.scalar(week_query.order_by(WeeklySchedule.week_start_date.desc(), WeeklySchedule.created_at.desc()))
+        if weekly_schedule is None:
+            raise HTTPException(status_code=404, detail="No accepted weekly schedule found")
+
+        days = list(
+            db.scalars(
+                select(DailySchedule)
+                .where(DailySchedule.weekly_schedule_id == weekly_schedule.id)
+                .order_by(DailySchedule.schedule_date.asc())
+            ).all()
+        )
+        day_payload: list[SpouseDashboardDayResponse] = []
+        for day in days:
+            rows = list(
+                db.execute(
+                    select(DailyScheduleItem, Task)
+                    .join(Task, Task.id == DailyScheduleItem.task_id)
+                    .where(DailyScheduleItem.daily_schedule_id == day.id)
+                    .order_by(DailyScheduleItem.order_index.asc(), DailyScheduleItem.created_at.asc())
+                ).all()
+            )
+            visible_items: list[SpouseDashboardItemResponse] = []
+            compressed_count = 0
+            for item, task in rows:
+                if not DomainService._can_view(actor, task.owner_user_id, task.is_private, task.visibility_scope):
+                    continue
+                if PlanningService._is_low_importance(task):
+                    compressed_count += 1
+                    continue
+                visible_items.append(
+                    SpouseDashboardItemResponse(
+                        id=item.id,
+                        task_id=task.id,
+                        task_title=task.title,
+                        planned_minutes=item.planned_minutes,
+                        outcome_status=item.outcome_status,
+                        owner_priority=task.priority,
+                        owner_urgency=task.urgency,
+                        spouse_priority=task.spouse_priority,
+                        spouse_urgency=task.spouse_urgency,
+                        spouse_deadline=task.spouse_deadline,
+                        spouse_deadline_type=task.spouse_deadline_type,
+                    )
+                )
+            day_payload.append(
+                SpouseDashboardDayResponse(
+                    daily_schedule_id=day.id,
+                    schedule_date=day.schedule_date,
+                    status=day.status,
+                    visible_items=visible_items,
+                    compressed_item_count=compressed_count,
+                )
+            )
+
+        return SpouseDashboardResponse(
+            weekly_schedule_id=weekly_schedule.id,
+            week_start_date=weekly_schedule.week_start_date,
+            accepted_at=weekly_schedule.accepted_at,
+            days=day_payload,
+        )
+
+    @staticmethod
     def accept_daily_schedule(db: Session, actor: User, daily_schedule_id: str) -> DailyScheduleResponse:
         schedule = PlanningService._owned_daily_schedule_or_404(db, actor, daily_schedule_id)
         if schedule.status == "proposed":
@@ -592,6 +668,21 @@ class PlanningService:
                 }
                 for item in items
             ],
+        )
+
+    @staticmethod
+    def _is_low_importance(task: Task) -> bool:
+        priority = task.priority or 0
+        urgency = task.urgency or 0
+        spouse_priority = task.spouse_priority or 0
+        spouse_urgency = task.spouse_urgency or 0
+        has_hard_deadline = task.deadline_type == "hard" or task.spouse_deadline_type == "hard"
+        return (
+            priority < PlanningService.LOW_IMPORTANCE_THRESHOLD
+            and urgency < PlanningService.LOW_IMPORTANCE_THRESHOLD
+            and spouse_priority < PlanningService.LOW_IMPORTANCE_THRESHOLD
+            and spouse_urgency < PlanningService.LOW_IMPORTANCE_THRESHOLD
+            and not has_hard_deadline
         )
 
 

@@ -76,6 +76,21 @@ def _headers(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def _create_and_login_spouse(client: TestClient, owner_headers: dict[str, str]) -> str:
+    spouse_create_response = client.post(
+        "/api/v1/users/spouse",
+        headers=owner_headers,
+        json={"email": "spouse@example.com", "password": "Password123!"},
+    )
+    assert spouse_create_response.status_code == 201
+    spouse_login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "spouse@example.com", "password": "Password123!"},
+    )
+    assert spouse_login_response.status_code == 200
+    return spouse_login_response.json()["access_token"]
+
+
 def _seed_tasks(client: TestClient, headers: dict[str, str]) -> list[str]:
     area_resp = client.post("/api/v1/areas", headers=headers, json={"name": "Operations"})
     assert area_resp.status_code == 201
@@ -258,6 +273,87 @@ def test_weekly_schedule_lifecycle_and_daily_item_telemetry() -> None:
         get_day_resp = client.get("/api/v1/schedules/days/2026-04-13", headers=headers)
         assert get_day_resp.status_code == 200
         assert get_day_resp.json()["id"] == monday["id"]
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_spouse_dashboard_only_shows_accepted_week_and_suppresses_private_items() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        owner_token = _bootstrap_and_token(client)
+        owner_headers = _headers(owner_token)
+        spouse_token = _create_and_login_spouse(client, owner_headers)
+        spouse_headers = _headers(spouse_token)
+
+        area_resp = client.post("/api/v1/areas", headers=owner_headers, json={"name": "Family"})
+        assert area_resp.status_code == 201
+        project_resp = client.post(
+            "/api/v1/projects",
+            headers=owner_headers,
+            json={"area_id": area_resp.json()["id"], "name": "Home Ops", "is_private": False, "visibility_scope": "shared"},
+        )
+        assert project_resp.status_code == 201
+        project_id = project_resp.json()["id"]
+
+        high_task_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={"project_id": project_id, "title": "Emergency plumber", "priority": 9, "urgency": 9},
+        )
+        assert high_task_resp.status_code == 201
+        low_task_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={"project_id": project_id, "title": "Clean inbox", "priority": 2, "urgency": 2},
+        )
+        assert low_task_resp.status_code == 201
+        private_task_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={
+                "project_id": project_id,
+                "title": "Private banking call",
+                "priority": 8,
+                "urgency": 8,
+                "is_private": True,
+                "visibility_scope": "owner",
+            },
+        )
+        assert private_task_resp.status_code == 201
+
+        proposal_resp = client.post(
+            "/api/v1/planning/weekly-proposals/generate",
+            headers=owner_headers,
+            json={"week_start_date": "2026-04-13"},
+        )
+        assert proposal_resp.status_code == 200
+        proposal_id = proposal_resp.json()["id"]
+
+        proposed_week_resp = client.post(
+            "/api/v1/schedules/weeks/generate",
+            headers=owner_headers,
+            json={"week_start_date": "2026-04-13", "source_proposal_id": proposal_id},
+        )
+        assert proposed_week_resp.status_code == 200
+
+        no_accepted_resp = client.get("/api/v1/schedules/spouse-dashboard", headers=spouse_headers)
+        assert no_accepted_resp.status_code == 404
+
+        accept_week_resp = client.post(f"/api/v1/schedules/weeks/{proposed_week_resp.json()['id']}/accept", headers=owner_headers)
+        assert accept_week_resp.status_code == 200
+
+        dashboard_resp = client.get("/api/v1/schedules/spouse-dashboard", headers=spouse_headers)
+        assert dashboard_resp.status_code == 200
+        payload = dashboard_resp.json()
+        visible_titles = [item["task_title"] for day in payload["days"] for item in day["visible_items"]]
+        assert "Emergency plumber" in visible_titles
+        assert "Private banking call" not in visible_titles
+        assert "Clean inbox" not in visible_titles
+        assert sum(day["compressed_item_count"] for day in payload["days"]) >= 1
     finally:
         try:
             next(client_gen)

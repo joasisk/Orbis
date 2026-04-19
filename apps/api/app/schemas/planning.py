@@ -114,6 +114,35 @@ class WeeklyScheduleResponse(BaseModel):
     days: list[DailyScheduleResponse] = Field(default_factory=list)
 
 
+class SpouseDashboardItemResponse(BaseModel):
+    id: str
+    task_id: str
+    task_title: str
+    planned_minutes: int
+    outcome_status: DailyScheduleItemOutcome
+    owner_priority: int | None
+    owner_urgency: int | None
+    spouse_priority: int | None
+    spouse_urgency: int | None
+    spouse_deadline: datetime | None
+    spouse_deadline_type: Literal["soft", "hard"] | None
+
+
+class SpouseDashboardDayResponse(BaseModel):
+    daily_schedule_id: str
+    schedule_date: date
+    status: DailyScheduleStatus
+    visible_items: list[SpouseDashboardItemResponse] = Field(default_factory=list)
+    compressed_item_count: int = 0
+
+
+class SpouseDashboardResponse(BaseModel):
+    weekly_schedule_id: str
+    week_start_date: date
+    accepted_at: datetime | None
+    days: list[SpouseDashboardDayResponse] = Field(default_factory=list)
+
+
 class DailySchedulePatchRequest(BaseModel):
     mood_score: int | None = Field(default=None, ge=1, le=5)
     morning_energy: float | None = Field(default=None, ge=0, le=1)
