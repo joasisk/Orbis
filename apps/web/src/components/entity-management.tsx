@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-
-import { TimeProgressArc } from "@/components/organic-chronos";
+import { EmptyState, ScreenHeader, SectionCard, StatusPill } from "@/components/ui-kit";
 
 type EntityType = "projects" | "tasks";
 
@@ -12,405 +11,152 @@ type EntityRecord = {
   name?: string;
   title?: string;
   status: string;
-  is_private: boolean;
-  visibility_scope: string;
-  priority: number | null;
-  urgency: number | null;
+  description?: string | null;
+  notes?: string | null;
   deadline: string | null;
-  spouse_priority: number | null;
-  spouse_urgency: number | null;
-  spouse_deadline: string | null;
 };
 
 const defaultApiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
-const getAuthHeaders = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
-
-const visibilityOptions = ["shared", "owner", "spouse"] as const;
+const headers = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 export function EntityManagement({ entityType }: { entityType: EntityType }) {
   const [apiBase, setApiBase] = useState(defaultApiBase);
   const [token, setToken] = useState("");
   const [entities, setEntities] = useState<EntityRecord[]>([]);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const entityLabel = entityType === "projects" ? "Project" : "Task";
-
-  const [form, setForm] = useState({
-    area_id: "",
-    project_id: "",
-    name: "",
-    title: "",
-    status: entityType === "projects" ? "active" : "todo",
-    is_private: false,
-    visibility_scope: "shared",
-    priority: "",
-    urgency: "",
-    deadline: "",
-    spouse_priority: "",
-    spouse_urgency: "",
-    spouse_deadline: "",
-    description: "",
-    notes: "",
-  });
-
   const endpoint = useMemo(() => `${apiBase}/${entityType}`, [apiBase, entityType]);
+
+  const [form, setForm] = useState({ area_id: "", project_id: "", name: "", title: "", status: entityType === "projects" ? "active" : "todo" });
 
   async function loadEntities() {
     setError("");
-    if (!token) {
-      setError("Access token is required.");
+    const response = await fetch(endpoint, { headers: headers(token), cache: "no-store" });
+    if (!response.ok) {
+      setError(`Could not load ${entityType}.`);
       return;
     }
-
-    try {
-      const response = await fetch(endpoint, {
-        headers: getAuthHeaders(token),
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error(`${response.status} ${response.statusText}`);
-      }
-      const payload = (await response.json()) as EntityRecord[];
-      setEntities(payload);
-    } catch (err) {
-      setError(`Could not load ${entityType}: ${err instanceof Error ? err.message : "unknown error"}`);
-    }
+    setEntities((await response.json()) as EntityRecord[]);
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setSuccess("");
-
-    const payload: Record<string, unknown> = {
-      status: form.status,
-      is_private: form.is_private,
-      visibility_scope: form.visibility_scope,
-      priority: form.priority === "" ? null : Number(form.priority),
-      urgency: form.urgency === "" ? null : Number(form.urgency),
-      deadline: form.deadline === "" ? null : form.deadline,
-      spouse_priority: form.spouse_priority === "" ? null : Number(form.spouse_priority),
-      spouse_urgency: form.spouse_urgency === "" ? null : Number(form.spouse_urgency),
-      spouse_deadline: form.spouse_deadline === "" ? null : form.spouse_deadline,
-    };
-
+    const payload: Record<string, unknown> = { status: form.status };
     if (entityType === "projects") {
       payload.area_id = form.area_id;
       payload.name = form.name;
-      payload.description = form.description;
     } else {
       payload.project_id = form.project_id || null;
       payload.title = form.title;
-      payload.notes = form.notes;
     }
 
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(token),
-      },
+      headers: { "Content-Type": "application/json", ...headers(token) },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      setError(`Create failed (${response.status}): ${text}`);
+      setError(`Create failed (${response.status}).`);
       return;
     }
 
-    setSuccess(`${entityLabel} created.`);
     await loadEntities();
   }
 
   useEffect(() => {
     const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
-    if (localToken) {
-      setToken(localToken);
-    }
+    if (localToken) setToken(localToken);
   }, []);
 
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    void loadEntities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, endpoint]);
-
   return (
-    <section className="shell-page">
-      <div className="organic-grid">
-          <article className="panel panel--focus focus-halo">
-            <p className="stamp-label">{entityLabel} atelier</p>
-            <h1 className="display-title">{entityLabel} list + create</h1>
-            <p className="body-copy">
-              Manage {entityType} with gentle tonal hierarchy and no hard visual fences.
-            </p>
+    <section className="screen-flow">
+      <ScreenHeader
+        title={entityType === "projects" ? "Long Term Plan — Projects" : "Long Term Plan — Tasks"}
+        subtitle={entityType === "projects" ? "Life area strategy" : "Project execution list"}
+        actions={(
+          <>
+            <input className="app-input" value={apiBase} onChange={(event) => setApiBase(event.target.value)} placeholder="API base URL" />
+            <input className="app-input" value={token} onChange={(event) => setToken(event.target.value)} placeholder="Access token" />
+            <button className="app-button app-button--primary" type="button" onClick={loadEntities}>Refresh</button>
+          </>
+        )}
+      />
 
-            <form onSubmit={onSubmit} className="field-grid" style={{ marginTop: "1rem" }}>
-              <input
-                className="input-field"
-                value={apiBase}
-                onChange={(e) => setApiBase(e.target.value)}
-                placeholder="API base URL"
-              />
-              <input
-                className="input-field"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Bearer token"
-              />
-
-              {entityType === "projects" ? (
-                <>
-                  <input
-                    className="input-field"
-                    required
-                    placeholder="Area ID"
-                    value={form.area_id}
-                    onChange={(e) => setForm({ ...form, area_id: e.target.value })}
-                  />
-                  <input
-                    className="input-field"
-                    required
-                    placeholder="Project name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  />
-                  <textarea
-                    className="text-area"
-                    placeholder="Description"
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  />
-                </>
-              ) : (
-                <>
-                  <input
-                    className="input-field"
-                    placeholder="Project ID (optional)"
-                    value={form.project_id}
-                    onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                  />
-                  <input
-                    className="input-field"
-                    required
-                    placeholder="Task title"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  />
-                  <textarea
-                    className="text-area"
-                    placeholder="Notes"
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  />
-                </>
-              )}
-
-              <input
-                className="input-field"
-                placeholder="Status"
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-              />
-
-              <div className="chip-row">
-                {visibilityOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`chip ${form.visibility_scope === option ? "is-selected" : ""}`}
-                    onClick={() => setForm({ ...form, visibility_scope: option })}
-                  >
-                    visibility_scope: {option}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className={`chip ${form.is_private ? "is-selected" : ""}`}
-                  onClick={() => setForm({ ...form, is_private: !form.is_private })}
-                >
-                  is_private: {form.is_private ? "true" : "false"}
-                </button>
-              </div>
-
-              <div className="row-3">
-                <input
-                  className="input-field"
-                  placeholder="priority"
-                  value={form.priority}
-                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                />
-                <input
-                  className="input-field"
-                  placeholder="urgency"
-                  value={form.urgency}
-                  onChange={(e) => setForm({ ...form, urgency: e.target.value })}
-                />
-                <input
-                  className="input-field"
-                  placeholder="deadline (ISO)"
-                  value={form.deadline}
-                  onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-                />
-              </div>
-
-              <div className="row-3">
-                <input
-                  className="input-field"
-                  placeholder="spouse_priority"
-                  value={form.spouse_priority}
-                  onChange={(e) => setForm({ ...form, spouse_priority: e.target.value })}
-                />
-                <input
-                  className="input-field"
-                  placeholder="spouse_urgency"
-                  value={form.spouse_urgency}
-                  onChange={(e) => setForm({ ...form, spouse_urgency: e.target.value })}
-                />
-                <input
-                  className="input-field"
-                  placeholder="spouse_deadline (ISO)"
-                  value={form.spouse_deadline}
-                  onChange={(e) => setForm({ ...form, spouse_deadline: e.target.value })}
-                />
-              </div>
-
-              <div className="button-row">
-                <button onClick={loadEntities} className="btn btn-secondary" type="button">
-                  Refresh list
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Create {entityLabel}
-                </button>
-              </div>
-            </form>
-
-            {error && <p className="message-error">{error}</p>}
-            {success && <p className="message-success">{success}</p>}
-          </article>
-
-          <aside className="panel">
-            <p className="stamp-label">Live cadence</p>
-            <h2 className="headline">Focus arc</h2>
-            <TimeProgressArc progress={0.35 + Math.min(entities.length, 10) * 0.05} />
-            <ul className="list">
-              {entities.map((entity) => {
-                const text = entityType === "projects" ? entity.name : entity.title;
-                return (
-                  <li key={entity.id} className="list-item">
-                    <Link href={`/${entityType}/${entity.id}`}>
-                      <strong>{text}</strong>
-                    </Link>
-                    <p className="body-copy">
-                      {entity.status} · priority {entity.priority ?? "n/a"} · {entity.visibility_scope}
-                    </p>
-                  </li>
-                );
-              })}
+      <div className="two-col">
+        <SectionCard title={`${entityLabel} list`}>
+          {entities.length ? (
+            <ul className="stack-list">
+              {entities.map((entity) => (
+                <li key={entity.id} className="task-row">
+                  <Link href={`/${entityType}/${entity.id}`}>{entity.name ?? entity.title ?? "Untitled"}</Link>
+                  <StatusPill label={entity.status} />
+                </li>
+              ))}
             </ul>
-          </aside>
+          ) : <EmptyState message={`No ${entityType} found.`} />}
+        </SectionCard>
+
+        <SectionCard title={`Create ${entityLabel}`} tone="accent">
+          <form className="stack-form" onSubmit={onSubmit}>
+            {entityType === "projects" ? (
+              <>
+                <input className="app-input" placeholder="Area ID" required value={form.area_id} onChange={(event) => setForm({ ...form, area_id: event.target.value })} />
+                <input className="app-input" placeholder="Project name" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+              </>
+            ) : (
+              <>
+                <input className="app-input" placeholder="Project ID" value={form.project_id} onChange={(event) => setForm({ ...form, project_id: event.target.value })} />
+                <input className="app-input" placeholder="Task title" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+              </>
+            )}
+            <input className="app-input" placeholder="Status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} />
+            <button className="app-button app-button--primary" type="submit">Create</button>
+          </form>
+        </SectionCard>
       </div>
+      {error ? <p className="error-text">{error}</p> : null}
     </section>
   );
 }
 
 export function EntityDetailView({ entityType, id }: { entityType: EntityType; id: string }) {
-  const [apiBase, setApiBase] = useState(defaultApiBase);
   const [token, setToken] = useState("");
   const [entity, setEntity] = useState<EntityRecord | null>(null);
-  const [history, setHistory] = useState<Array<{ event_type: string; created_at: string }>>([]);
   const [error, setError] = useState("");
 
-  async function refresh() {
-    setError("");
-    if (!token) {
-      setError("Access token is required.");
-      return;
-    }
-
-    const headers = getAuthHeaders(token);
-
-    const [entityRes, historyRes] = await Promise.all([
-      fetch(`${apiBase}/${entityType}/${id}`, { headers, cache: "no-store" }),
-      fetch(`${apiBase}/history/${entityType === "projects" ? "project" : "task"}/${id}`, { headers, cache: "no-store" }),
-    ]);
-
-    if (!entityRes.ok) {
-      setError(`Could not load ${entityType} ${id}`);
-      return;
-    }
-
-    setEntity((await entityRes.json()) as EntityRecord);
-    setHistory(historyRes.ok ? ((await historyRes.json()) as Array<{ event_type: string; created_at: string }>) : []);
-  }
-
   useEffect(() => {
-    const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
-    if (localToken) {
-      setToken(localToken);
-    }
+    setToken(window.localStorage.getItem("orbis_access_token") ?? "");
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, apiBase, entityType, id]);
+    if (!token) return;
+    const run = async () => {
+      const response = await fetch(`${defaultApiBase}/${entityType}/${id}`, { headers: headers(token), cache: "no-store" });
+      if (!response.ok) {
+        setError(`Could not load ${entityType.slice(0, -1)} detail.`);
+        return;
+      }
+      setEntity((await response.json()) as EntityRecord);
+    };
+    void run();
+  }, [entityType, id, token]);
 
   return (
-    <section className="shell-page">
-      <div className="organic-grid">
-          <article className="panel panel--focus">
-            <p className="stamp-label">detail view</p>
-            <h1 className="display-title">{entityType === "projects" ? "Project" : "Task"} detail</h1>
-            <p className="body-copy">ID: {id}</p>
-
-            <div className="field-grid" style={{ marginTop: "1rem" }}>
-              <input
-                className="input-field"
-                value={apiBase}
-                onChange={(e) => setApiBase(e.target.value)}
-                placeholder="API base URL"
-              />
-              <input
-                className="input-field"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Bearer token"
-              />
-            </div>
-
-            <div className="button-row">
-              <button type="button" onClick={refresh} className="btn btn-primary">
-                Refresh detail
-              </button>
-            </div>
-
-            {error && <p className="message-error">{error}</p>}
-            {entity && <pre className="list-item">{JSON.stringify(entity, null, 2)}</pre>}
-          </article>
-
-          <aside className="panel">
-            <p className="stamp-label">Version flow</p>
-            <h2 className="headline">History</h2>
-            <ul className="list">
-              {history.map((entry, index) => (
-                <li key={`${entry.created_at}-${index}`} className="list-item">
-                  <strong>{entry.event_type}</strong>
-                  <p className="body-copy">{entry.created_at}</p>
-                </li>
-              ))}
-            </ul>
-          </aside>
-      </div>
+    <section className="screen-flow">
+      <ScreenHeader title={entityType === "projects" ? "Project Detail" : "Task Detail"} subtitle="Detail panel content" />
+      <SectionCard title="Overview">
+        {entity ? (
+          <div className="stack-list">
+            <p className="lead-copy">{entity.name ?? entity.title}</p>
+            <p>{entity.description ?? entity.notes ?? "No description."}</p>
+            <p>Deadline: {entity.deadline ?? "None"}</p>
+            <StatusPill label={entity.status} />
+          </div>
+        ) : <EmptyState message="Loading detail…" />}
+      </SectionCard>
+      {error ? <p className="error-text">{error}</p> : null}
     </section>
   );
 }

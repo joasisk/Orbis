@@ -3,47 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { NotificationCandybar, NotificationToast } from "./notification-candybar";
-import { NotificationCenter, ReminderEvent } from "./notification-center";
 
 type NavItem = {
   href: string;
   label: string;
-  icon: string;
-  match?: (pathname: string) => boolean;
+  match: (pathname: string) => boolean;
 };
 
 const navItems: NavItem[] = [
-  {
-    href: "/",
-    label: "Today",
-    icon: "calendar_today",
-    match: (pathname) => pathname === "/",
-  },
-  {
-    href: "/schedule",
-    label: "Week",
-    icon: "calendar_month",
-    match: (pathname) => pathname.startsWith("/schedule"),
-  },
-  {
-    href: "/tasks",
-    label: "Tasks",
-    icon: "checklist",
-    match: (pathname) => pathname.startsWith("/tasks"),
-  },
-  {
-    href: "/projects",
-    label: "Projects",
-    icon: "folder",
-    match: (pathname) => pathname.startsWith("/projects"),
-  },
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: "settings",
-    match: (pathname) => pathname.startsWith("/settings"),
-  },
+  { href: "/", label: "Day", match: (pathname) => pathname === "/" },
+  { href: "/schedule", label: "Week", match: (pathname) => pathname.startsWith("/schedule") },
+  { href: "/projects", label: "Long Term Plan", match: (pathname) => pathname.startsWith("/projects") || pathname.startsWith("/tasks") },
 ];
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -59,11 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
-  const [notifications, setNotifications] = useState<ReminderEvent[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [notificationsError, setNotificationsError] = useState("");
-  const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
-  const [toasts, setToasts] = useState<NotificationToast[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
 
   const clearAuthState = useCallback((redirectToLogin = true) => {
@@ -72,8 +38,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.cookie = `${ACCESS_TOKEN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
     document.cookie = `${ACCESS_TOKEN_COOKIE}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; SameSite=Lax`;
     setMe(null);
-    setNotifications([]);
-    setNotificationCenterOpen(false);
     if (redirectToLogin) {
       router.replace("/login");
     }
@@ -93,22 +57,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         cache: "no-store",
       });
       if (!response.ok) {
-        if (response.status === 401) {
-          clearAuthState();
-        }
+        if (response.status === 401) clearAuthState();
         return;
       }
-      const payload = (await response.json()) as MeResponse;
-      setMe(payload);
+      setMe((await response.json()) as MeResponse);
     };
 
     void loadMe();
   }, [authRoute, clearAuthState]);
 
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, []);
+
   const displayName = useMemo(() => {
-    if (!me?.email) return "Your account";
+    if (!me?.email) return "John Doe";
     const localPart = me.email.split("@")[0] ?? "";
-    if (!localPart) return me.email;
     return localPart
       .split(/[._-]/g)
       .filter(Boolean)
@@ -117,102 +87,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [me]);
 
   const avatarLabel = useMemo(() => {
-    if (!displayName) return "OR";
     const letters = displayName
       .split(" ")
       .filter(Boolean)
-      .map((tokenPart) => tokenPart[0]?.toUpperCase() ?? "")
+      .map((chunk) => chunk[0]?.toUpperCase() ?? "")
       .join("");
     return letters.slice(0, 2) || "OR";
   }, [displayName]);
-
-  const pushToast = useCallback((message: string, tone: NotificationToast["tone"] = "info") => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    setToasts((current) => [...current, { id, message, tone }]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 6000);
-  }, []);
-
-  const loadNotifications = useCallback(async (accessToken: string, suppressLoading = false) => {
-    if (!accessToken) return;
-    if (!suppressLoading) {
-      setNotificationsLoading(true);
-    }
-    setNotificationsError("");
-
-    const response = await fetch(`${apiBase}/reminders/events`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        clearAuthState();
-        return;
-      }
-      setNotificationsLoading(false);
-      setNotificationsError(`Could not load notifications (${response.status}).`);
-      return;
-    }
-
-    const payload = (await response.json()) as ReminderEvent[];
-    const pendingNotifications = payload.filter((entry) => entry.response_status === "pending");
-    setNotifications((previous) => {
-      if (pendingNotifications.length > previous.length) {
-        const delta = pendingNotifications.length - previous.length;
-        pushToast(`${delta} new reminder${delta > 1 ? "s" : ""} received.`, "info");
-      }
-      return pendingNotifications;
-    });
-    setNotificationsLoading(false);
-  }, [clearAuthState, pushToast]);
-
-  useEffect(() => {
-    if (authRoute) return;
-    const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
-    if (!accessToken) return;
-
-    void loadNotifications(accessToken);
-    const intervalId = window.setInterval(() => {
-      void loadNotifications(accessToken, true);
-    }, 60000);
-
-    return () => window.clearInterval(intervalId);
-  }, [authRoute, loadNotifications]);
-
-  const handleReminderAction = async (notificationId: string, action: "acknowledged" | "snoozed" | "dismissed") => {
-    const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
-    if (!accessToken) {
-      pushToast("Sign in to respond to reminders.", "error");
-      return;
-    }
-
-    const response = await fetch(`${apiBase}/reminders/events/${notificationId}/response`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ response_status: action }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        clearAuthState();
-        return;
-      }
-      pushToast(`Could not update reminder (${response.status}).`, "error");
-      return;
-    }
-
-    setNotifications((current) => current.filter((notification) => notification.id !== notificationId));
-    pushToast(
-      action === "acknowledged"
-        ? "Reminder acknowledged."
-        : action === "snoozed"
-          ? "Reminder snoozed."
-          : "Reminder dismissed.",
-      "success",
-    );
-  };
 
   const handleLogout = async () => {
     const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_KEY) ?? "";
@@ -227,69 +108,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   if (authRoute) {
-    return <main className="app-shell__auth-main">{children}</main>;
+    return <main className="auth-layout">{children}</main>;
   }
 
   return (
-    <div className="app-shell">
-      <aside className="app-shell__sidebar" aria-label="Main navigation">
-        <div className="app-shell__top">
-          <div className="app-shell__brand">Orbis</div>
-
-          <div className="app-shell__context">
-            <div className="app-shell__avatar" aria-hidden>
-              {avatarLabel}
-            </div>
-            <button className="app-shell__user-button" onClick={handleLogout} type="button" disabled={!me?.email}>
-              <span className="app-shell__user-name">{displayName}</span>
-              <span className="app-shell__user-email">{me?.email ?? "Sign in to continue"}</span>
-            </button>
-          </div>
-
-          <button className="app-shell__notification-button" type="button" onClick={() => setNotificationCenterOpen((open) => !open)}>
-            <span className="material-symbols-outlined" aria-hidden>
-              notifications
-            </span>
-            <span>Notifications</span>
-            {notifications.length ? <span className="app-shell__notification-count">{notifications.length}</span> : null}
-          </button>
-
-          <nav className="app-shell__nav" aria-label="Primary">
-            {navItems.map((item) => {
-              const isActive = item.match ? item.match(pathname) : pathname.startsWith(item.href);
-              return (
-                <Link key={item.href} className={`app-shell__nav-item${isActive ? " app-shell__nav-item--active" : ""}`} href={item.href}>
-                  <span className="material-symbols-outlined" aria-hidden>
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+    <div className="layout-root" onClick={() => setMenuOpen(false)}>
+      <aside className="sidebar" aria-label="Main navigation">
+        <div className="sidebar-brand">
+          <p>ORBIS</p>
+          <span>v0.1.0</span>
         </div>
 
-        <div className="app-shell__bottom">
-          <Link className={`app-shell__nav-item${pathname.startsWith("/settings") ? " app-shell__nav-item--active" : ""}`} href="/settings">
-            <span className="material-symbols-outlined" aria-hidden>
-              settings
-            </span>
-            <span>Settings</span>
-          </Link>
-          <div className="app-shell__art" aria-hidden />
+        <nav className="sidebar-nav" aria-label="Primary">
+          {navItems.map((item) => {
+            const isActive = item.match(pathname);
+            return (
+              <Link key={item.href} className={`sidebar-link${isActive ? " is-active" : ""}`} href={item.href}>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-user" onClick={(event) => event.stopPropagation()}>
+          <button className="user-trigger" type="button" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen}>
+            <span className="avatar">{avatarLabel}</span>
+            <span>{displayName}</span>
+            <span>▾</span>
+          </button>
+          {menuOpen ? (
+            <div className="user-menu" role="menu">
+              <Link href="/settings" role="menuitem">User Settings</Link>
+              <Link href="/settings" role="menuitem">App Settings</Link>
+              <button type="button" onClick={handleLogout} role="menuitem">Logout</button>
+            </div>
+          ) : null}
         </div>
       </aside>
-
-      <main className="app-shell__main">{children}</main>
-      <NotificationCenter
-        isOpen={notificationCenterOpen}
-        isLoading={notificationsLoading}
-        error={notificationsError}
-        notifications={notifications}
-        onClose={() => setNotificationCenterOpen(false)}
-        onRespond={handleReminderAction}
-      />
-      <NotificationCandybar toasts={toasts} onDismiss={(toastId) => setToasts((current) => current.filter((toast) => toast.id !== toastId))} />
+      <main className="content-region">{children}</main>
     </div>
   );
 }
