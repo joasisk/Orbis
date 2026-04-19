@@ -22,6 +22,7 @@ export function HomeDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dailyPlan, setDailyPlan] = useState<DailyPlanResponse | null>(null);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const doNow = useMemo(() => dailyPlan?.primary_recommendation ?? dailyPlan?.fallback_recommendations[0] ?? null, [dailyPlan]);
 
@@ -31,12 +32,14 @@ export function HomeDashboard() {
   }, []);
 
   async function loadDashboard() {
+    if (isLoading) return;
     setError("");
     if (!token) {
       setError("Access token is required.");
       return;
     }
 
+    setIsLoading(true);
     const [areasRes, tasksRes, planRes] = await Promise.all([
       fetch(`${apiBase}/areas`, { headers: authHeaders(token), cache: "no-store" }),
       fetch(`${apiBase}/tasks`, { headers: authHeaders(token), cache: "no-store" }),
@@ -44,6 +47,7 @@ export function HomeDashboard() {
     ]);
 
     if (!areasRes.ok || !tasksRes.ok || !planRes.ok) {
+      setIsLoading(false);
       setError("Could not load Day context.");
       return;
     }
@@ -51,7 +55,14 @@ export function HomeDashboard() {
     setAreas((await areasRes.json()) as Area[]);
     setTasks((await tasksRes.json()) as Task[]);
     setDailyPlan((await planRes.json()) as DailyPlanResponse);
+    setIsLoading(false);
   }
+
+  useEffect(() => {
+    if (!token || areas.length || tasks.length || isLoading) return;
+    void loadDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   return (
     <section className="screen-flow">
@@ -62,7 +73,7 @@ export function HomeDashboard() {
           <>
             <input className="app-input" placeholder="Access token" value={token} onChange={(event) => setToken(event.target.value)} />
             <input className="app-input app-input--short" type="number" min="0" max="10" step="0.5" value={energy} onChange={(event) => setEnergy(event.target.value)} />
-            <button className="app-button app-button--primary" type="button" onClick={loadDashboard}>Refresh</button>
+            <button className="app-button app-button--primary" type="button" onClick={loadDashboard}>{isLoading ? "Loading..." : "Refresh"}</button>
           </>
         )}
       />
@@ -73,7 +84,7 @@ export function HomeDashboard() {
             <p className="lead-copy">Primary focus: {doNow.title}</p>
             <p>Score {doNow.score.toFixed(2)} · {doNow.status}</p>
           </>
-        ) : <EmptyState message="No recommendation yet. Refresh to generate a Day plan." />}
+        ) : <EmptyState message={isLoading ? "Loading Day plan..." : "No recommendation yet. Refresh to generate a Day plan."} />}
       </SectionCard>
 
       <SectionCard title="Timeline">

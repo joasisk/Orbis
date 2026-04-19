@@ -13,6 +13,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/", label: "Day", match: (pathname) => pathname === "/" },
   { href: "/schedule", label: "Week", match: (pathname) => pathname.startsWith("/schedule") },
+  { href: "/areas", label: "Areas", match: (pathname) => pathname.startsWith("/areas") },
   { href: "/projects", label: "Long Term Plan", match: (pathname) => pathname.startsWith("/projects") || pathname.startsWith("/tasks") },
 ];
 
@@ -23,6 +24,7 @@ const REFRESH_TOKEN_KEY = "orbis_refresh_token";
 
 type MeResponse = {
   email: string;
+  role: "owner" | "spouse";
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {

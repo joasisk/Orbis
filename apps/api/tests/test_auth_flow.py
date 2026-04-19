@@ -69,6 +69,13 @@ def test_auth_and_role_access() -> None:
         assert me_response.status_code == 200
         assert me_response.json()["role"] == "owner"
 
+        owner_spouse_status_before = client.get(
+            "/api/v1/users/spouse",
+            headers=_auth_headers(owner_access),
+        )
+        assert owner_spouse_status_before.status_code == 200
+        assert owner_spouse_status_before.json()["spouse"] is None
+
         create_spouse_response = client.post(
             "/api/v1/users/spouse",
             headers=_auth_headers(owner_access),
@@ -76,6 +83,13 @@ def test_auth_and_role_access() -> None:
         )
         assert create_spouse_response.status_code == 201
         assert create_spouse_response.json()["role"] == "spouse"
+
+        owner_spouse_status_after = client.get(
+            "/api/v1/users/spouse",
+            headers=_auth_headers(owner_access),
+        )
+        assert owner_spouse_status_after.status_code == 200
+        assert owner_spouse_status_after.json()["spouse"]["email"] == "spouse@example.com"
 
         spouse_tokens = _login(client, "spouse@example.com", "SpousePass123!")
         spouse_access = spouse_tokens["access_token"]
@@ -92,6 +106,12 @@ def test_auth_and_role_access() -> None:
         )
         assert spouse_household_response.status_code == 200
         assert spouse_household_response.json()["role"] == "spouse"
+
+        spouse_spouse_status_response = client.get(
+            "/api/v1/users/spouse",
+            headers=_auth_headers(spouse_access),
+        )
+        assert spouse_spouse_status_response.status_code == 403
 
         refresh_response = client.post("/api/v1/auth/refresh", json={"refresh_token": owner_refresh})
         assert refresh_response.status_code == 200
