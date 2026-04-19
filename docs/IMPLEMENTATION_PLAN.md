@@ -179,13 +179,20 @@ Definition of done:
 - basic security review complete
 
 ## Phase 8 — Post-MVP expansion
-Candidates:
-- GraphQL
-- public SDK
+Goal: expand integrations and platform reach beyond MVP without changing MVP guardrails.
+
+Deliverables (incremental):
+- public SDK baseline (API-key based) for external tooling automation
+- evaluate GraphQL facade feasibility against existing REST contracts
 - mobile app with Expo
 - iOS widgets and notifications
 - richer analytics
 - plugin system evolution
+
+Definition of done (for first increment):
+- documented public SDK usage aligned to existing API key flow
+- SDK includes task/project read operations and core action helpers (daily plan/focus start)
+- automated tests validate request auth header behavior and error handling
 
 ## Detailed schedule/performance extension plan
 - See `docs/SCHEDULE_AND_PERFORMANCE_MODEL_PLAN.md` for DB, API, and web implementation details for explicit weekly/daily schedules and adaptive performance telemetry.
