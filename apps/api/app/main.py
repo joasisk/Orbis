@@ -1,15 +1,17 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
 from app.core.db import check_db_connection
+from app.core.rate_limit import SENSITIVE_POST_PATHS, InMemoryRateLimiter, is_rate_limited_endpoint
 
 logger = logging.getLogger(__name__)
+rate_limiter = InMemoryRateLimiter()
 
 
 @asynccontextmanager
@@ -44,6 +46,32 @@ app = FastAPI(
     ],
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def enforce_sensitive_rate_limits(request: Request, call_next):
+    if is_rate_limited_endpoint(request.url.path, request.method, SENSITIVE_POST_PATHS):
+        forwarded_for = request.headers.get("x-forwarded-for", "")
+        if forwarded_for:
+            client_identity = forwarded_for.split(",")[0].strip()
+        else:
+            client_identity = request.client.host if request.client is not None else "unknown"
+
+        allowed = rate_limiter.allow(
+            key=client_identity,
+            bucket=request.url.path,
+            limit=settings.api_rate_limit_requests,
+            window_seconds=settings.api_rate_limit_window_seconds,
+        )
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Too many requests to sensitive endpoint. Please retry later.",
+                },
+            )
+
+    return await call_next(request)
 
 
 @app.exception_handler(OperationalError)

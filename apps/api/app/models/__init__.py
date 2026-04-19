@@ -1,3 +1,4 @@
+from app.models.api_client_key import ApiClientKey
 from app.models.audit_event import AuditEvent
 from app.models.calendar import CalendarExternalEvent, CalendarSoftBlock
 from app.models.domain import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
@@ -17,6 +18,7 @@ from app.models.user_settings import UserSettings
 
 __all__ = [
     "User",
+    "ApiClientKey",
     "SessionToken",
     "AuditEvent",
     "CalendarExternalEvent",

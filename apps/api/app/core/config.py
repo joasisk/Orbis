@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     api_access_token_expire_minutes: int = Field(default=30, alias="API_ACCESS_TOKEN_EXPIRE_MINUTES")
     api_refresh_token_expire_days: int = Field(default=30, alias="API_REFRESH_TOKEN_EXPIRE_DAYS")
 
+    api_rate_limit_requests: int = Field(default=30, alias="API_RATE_LIMIT_REQUESTS")
+    api_rate_limit_window_seconds: int = Field(default=60, alias="API_RATE_LIMIT_WINDOW_SECONDS")
+    api_key_header_name: str = Field(default="X-API-Key", alias="API_KEY_HEADER_NAME")
+
     postgres_db: str = Field(default="orbis", alias="POSTGRES_DB")
     postgres_user: str = Field(default="orbis", alias="POSTGRES_USER")
     postgres_password: str = Field(default="change_me", alias="POSTGRES_PASSWORD")
