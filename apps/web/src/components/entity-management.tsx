@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ScreenHeader, SectionCard, StatusPill } from "@/components/ui-kit";
+import { uiTerminology } from "@/lib/ui-terminology";
 
 type UserRole = "owner" | "spouse";
 type DeadlineType = "soft" | "hard";
@@ -65,6 +66,8 @@ const TASK_SAVED_EVENT = "orbis:task-saved";
 
 const EMPTY_PRIORITY = "";
 const EMPTY_DEADLINE = "";
+const orbitLabel = uiTerminology.orbit.singular;
+const orbitsLabel = uiTerminology.orbit.plural;
 
 function toDateTimeInput(value: string | null): string {
   if (!value) return "";
@@ -287,7 +290,7 @@ export function TaskModalHost() {
         <form className="stack-form" onSubmit={onSubmit}>
           <input className="app-input" placeholder="Title" required value={form.title} onChange={(event) => { setForm({ ...form, title: event.target.value }); setDirty(true); }} />
           <select className="app-input" value={form.areaId} onChange={(event) => { setForm({ ...form, areaId: event.target.value, projectId: "" }); setDirty(true); }}>
-            <option value="">Select life area</option>
+            <option value="">{`Select ${orbitLabel}`}</option>
             {areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
           </select>
           <select className="app-input" value={form.projectId} onChange={(event) => { setForm({ ...form, projectId: event.target.value }); setDirty(true); }} disabled={!form.areaId}>
@@ -493,11 +496,11 @@ export function ProjectsWorkspace() {
 
   return (
     <section className="screen-flow">
-      <ScreenHeader title="Long Term Plan" subtitle="Areas and projects workspace" />
+      <ScreenHeader title="Long Term Plan" subtitle={`${orbitsLabel} and projects workspace`} />
       <div className="two-col">
-        <SectionCard title="Life areas">
+        <SectionCard title={orbitsLabel}>
           <div className="inline-actions">
-            <button className="app-button app-button--primary" type="button" onClick={openAreaCreate}>Add life area</button>
+            <button className="app-button app-button--primary" type="button" onClick={openAreaCreate}>{`Add ${orbitLabel}`}</button>
             {selectedAreaId ? <button className="app-button" type="button" onClick={() => setSelectedAreaId("")}>Clear filter</button> : null}
           </div>
           {areas.length ? (
@@ -509,7 +512,7 @@ export function ProjectsWorkspace() {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState message="No areas yet. Create your first life area." />}
+          ) : <EmptyState message={`No ${orbitsLabel} yet. Create your first ${orbitLabel}.`} />}
         </SectionCard>
 
         <SectionCard title="Projects">
@@ -531,14 +534,14 @@ export function ProjectsWorkspace() {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState message={selectedAreaId ? "No projects in this area yet." : "No projects found."} />}
+          ) : <EmptyState message={selectedAreaId ? `No projects in this ${orbitLabel} yet.` : "No projects found."} />}
         </SectionCard>
       </div>
 
       {areaModal ? (
         <div className="modal-backdrop" role="presentation" onClick={() => setAreaModal(null)}>
           <div className="modal-shell" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <h2>{areaModal.mode === "edit" ? "Edit life area" : "Add life area"}</h2>
+            <h2>{areaModal.mode === "edit" ? `Edit ${orbitLabel}` : `Add ${orbitLabel}`}</h2>
             <form className="stack-form" onSubmit={submitArea}>
               <input className="app-input" required placeholder="Name" value={areaForm.name} onChange={(event) => setAreaForm({ ...areaForm, name: event.target.value })} />
               <textarea className="app-input app-input--text" placeholder="Description" value={areaForm.description} onChange={(event) => setAreaForm({ ...areaForm, description: event.target.value })} />
@@ -557,7 +560,7 @@ export function ProjectsWorkspace() {
             <h2>{projectModal.mode === "edit" ? "Edit project" : "Add project"}</h2>
             <form className="stack-form" onSubmit={submitProject}>
               <select className="app-input" required value={projectForm.area_id} onChange={(event) => setProjectForm({ ...projectForm, area_id: event.target.value })}>
-                <option value="">Select life area</option>
+                <option value="">{`Select ${orbitLabel}`}</option>
                 {areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
               </select>
               <input className="app-input" required placeholder="Name" value={projectForm.name} onChange={(event) => setProjectForm({ ...projectForm, name: event.target.value })} />
@@ -697,7 +700,7 @@ export function TasksWorkspace() {
       <SectionCard title="Filters">
         <div className="filter-grid">
           <select className="app-input" value={filters.areaId} onChange={(event) => setFilters({ ...filters, areaId: event.target.value, projectId: "" })}>
-            <option value="">All life areas</option>
+            <option value="">{`All ${orbitsLabel}`}</option>
             {areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
           </select>
           <select className="app-input" value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}>

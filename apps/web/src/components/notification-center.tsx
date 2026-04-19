@@ -64,7 +64,7 @@ export function NotificationCenter({
         <ul className="notification-center__list">
           {notifications.map((notification) => (
             <li className="notification-center__item" key={notification.id}>
-              <p className="notification-center__title">Schedule reminder</p>
+              <p className="notification-center__title">Trajectory reminder</p>
               <p className="notification-center__meta">{formatWhen(notification.sent_at)}</p>
               <p className="notification-center__meta">
                 Channel: {notification.delivery_channel.replace("_", " ")}

@@ -48,7 +48,7 @@ export function HomeDashboard() {
 
     if (!areasRes.ok || !tasksRes.ok || !planRes.ok) {
       setIsLoading(false);
-      setError("Could not load Day context.");
+      setError("Could not load Burn context.");
       return;
     }
 
@@ -81,10 +81,10 @@ export function HomeDashboard() {
       <SectionCard title="Morning Brief" tone="accent">
         {doNow ? (
           <>
-            <p className="lead-copy">Primary focus: {doNow.title}</p>
+            <p className="lead-copy">Primary burn: {doNow.title}</p>
             <p>Score {doNow.score.toFixed(2)} · {doNow.status}</p>
           </>
-        ) : <EmptyState message={isLoading ? "Loading Day plan..." : "No recommendation yet. Refresh to generate a Day plan."} />}
+        ) : <EmptyState message={isLoading ? "Loading Burn plan..." : "No recommendation yet. Refresh to generate a Burn plan."} />}
       </SectionCard>
 
       <SectionCard title="Timeline">
@@ -100,7 +100,7 @@ export function HomeDashboard() {
               </li>
             ))}
           </ul>
-        ) : <EmptyState message="No tasks for the Day timeline." />}
+        ) : <EmptyState message="No tasks for the Burn timeline." />}
       </SectionCard>
 
       <div className="two-col">
@@ -125,7 +125,7 @@ export function HomeDashboard() {
         </SectionCard>
       </div>
 
-      {areas.length ? <p className="footnote">Life areas in scope: {areas.map((area) => area.name).join(" · ")}</p> : null}
+      {areas.length ? <p className="footnote">Orbits in scope: {areas.map((area) => area.name).join(" · ")}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
     </section>
   );
