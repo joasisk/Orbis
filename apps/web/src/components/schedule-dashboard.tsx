@@ -34,6 +34,7 @@ export function ScheduleDashboard() {
   const [dailySchedule, setDailySchedule] = useState<DailySchedule | null>(null);
   const [weekMode, setWeekMode] = useState<"current" | "future">("current");
   const [error, setError] = useState("");
+  const [isLoadingWeek, setIsLoadingWeek] = useState(false);
 
   useEffect(() => {
     const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
@@ -41,22 +42,33 @@ export function ScheduleDashboard() {
   }, []);
 
   async function loadWeek() {
+    if (!token || isLoadingWeek) return;
     setError("");
+    setIsLoadingWeek(true);
     const response = await fetch(`${apiBase}/schedules/weeks/${weekDate}`, { headers: authHeaders(token), cache: "no-store" });
     if (!response.ok) {
+      setIsLoadingWeek(false);
       setError(`Could not load week (${response.status}).`);
       return;
     }
     const payload = (await response.json()) as WeeklySchedule;
     setWeeklySchedule(payload);
     setDailySchedule(payload.days[0] ?? null);
+    setIsLoadingWeek(false);
   }
 
   async function loadDay(scheduleDate: string) {
+    if (!token) return;
     const response = await fetch(`${apiBase}/schedules/days/${scheduleDate}`, { headers: authHeaders(token), cache: "no-store" });
     if (!response.ok) return;
     setDailySchedule((await response.json()) as DailySchedule);
   }
+
+  useEffect(() => {
+    if (!token || weeklySchedule || isLoadingWeek) return;
+    void loadWeek();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, weekDate]);
 
   return (
     <section className="screen-flow">
@@ -69,7 +81,7 @@ export function ScheduleDashboard() {
             <button className={`app-button ${weekMode === "future" ? "app-button--secondary" : ""}`} onClick={() => setWeekMode("future")} type="button">Future Weeks</button>
             <input className="app-input" placeholder="Access token" value={token} onChange={(event) => setToken(event.target.value)} />
             <input className="app-input app-input--short" value={weekDate} onChange={(event) => setWeekDate(event.target.value)} />
-            <button className="app-button app-button--primary" onClick={loadWeek} type="button">Load Week</button>
+            <button className="app-button app-button--primary" onClick={loadWeek} type="button">{isLoadingWeek ? "Loading..." : "Load Week"}</button>
           </>
         )}
       />
@@ -89,7 +101,7 @@ export function ScheduleDashboard() {
               ))}
             </div>
           </>
-        ) : <EmptyState message="Load a week to see execution and planning context." />}
+        ) : <EmptyState message={isLoadingWeek ? "Loading current week..." : "Load a week to see execution and planning context."} />}
       </SectionCard>
 
       <SectionCard title={weekMode === "current" ? "Overload / blockers strip" : "Planning Suggestions"}>

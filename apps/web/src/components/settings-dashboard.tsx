@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { EmptyState, ScreenHeader, SectionCard } from "@/components/ui-kit";
 
+type UserRole = "owner" | "spouse";
+
 type SettingsPayload = {
   reminder_enabled: boolean;
   reminder_window_start: string;
@@ -18,12 +20,27 @@ type SettingsPayload = {
   session_note: string | null;
 };
 
+type MePayload = {
+  role: UserRole;
+};
+
+type SpouseStatusPayload = {
+  spouse: {
+    id: string;
+    email: string;
+    created_at: string;
+  } | null;
+};
+
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 const headers = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 export function SettingsDashboard() {
   const [token, setToken] = useState("");
   const [form, setForm] = useState<SettingsPayload | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [spouseStatus, setSpouseStatus] = useState<SpouseStatusPayload | null>(null);
+  const [spouseForm, setSpouseForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,12 +49,26 @@ export function SettingsDashboard() {
   }, []);
 
   async function loadSettings() {
-    const response = await fetch(`${apiBase}/settings/me`, { headers: headers(token), cache: "no-store" });
-    if (!response.ok) {
+    const [settingsResponse, meResponse] = await Promise.all([
+      fetch(`${apiBase}/settings/me`, { headers: headers(token), cache: "no-store" }),
+      fetch(`${apiBase}/users/me`, { headers: headers(token), cache: "no-store" }),
+    ]);
+
+    if (!settingsResponse.ok || !meResponse.ok) {
       setError("Could not load settings.");
       return;
     }
-    setForm((await response.json()) as SettingsPayload);
+
+    const me = (await meResponse.json()) as MePayload;
+    setRole(me.role);
+    setForm((await settingsResponse.json()) as SettingsPayload);
+
+    if (me.role === "owner") {
+      const spouseResponse = await fetch(`${apiBase}/users/spouse`, { headers: headers(token), cache: "no-store" });
+      if (spouseResponse.ok) {
+        setSpouseStatus((await spouseResponse.json()) as SpouseStatusPayload);
+      }
+    }
   }
 
   async function saveSettings() {
@@ -53,6 +84,29 @@ export function SettingsDashboard() {
     }
     setForm((await response.json()) as SettingsPayload);
   }
+
+  async function createSpouse() {
+    const response = await fetch(`${apiBase}/users/spouse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers(token) },
+      body: JSON.stringify(spouseForm),
+    });
+    if (!response.ok) {
+      setError(`Could not create spouse (${response.status}).`);
+      return;
+    }
+    setSpouseForm({ email: "", password: "" });
+    const spouseResponse = await fetch(`${apiBase}/users/spouse`, { headers: headers(token), cache: "no-store" });
+    if (spouseResponse.ok) {
+      setSpouseStatus((await spouseResponse.json()) as SpouseStatusPayload);
+    }
+  }
+
+  useEffect(() => {
+    if (!token || form) return;
+    void loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   return (
     <section className="screen-flow">
@@ -82,6 +136,25 @@ export function SettingsDashboard() {
             <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder="Preferred provider" />
             <button className="app-button app-button--primary" type="button" onClick={saveSettings}>Save settings</button>
           </SectionCard>
+
+          {role === "owner" ? (
+            <SectionCard title="Spouse management">
+              {spouseStatus?.spouse ? (
+                <p>Linked spouse: {spouseStatus.spouse.email}</p>
+              ) : (
+                <p>No spouse account linked yet.</p>
+              )}
+              <div className="stack-form">
+                <input className="app-input" placeholder="Spouse email" value={spouseForm.email} onChange={(event) => setSpouseForm({ ...spouseForm, email: event.target.value })} />
+                <input className="app-input" type="password" placeholder="Spouse password" value={spouseForm.password} onChange={(event) => setSpouseForm({ ...spouseForm, password: event.target.value })} />
+                <button className="app-button app-button--primary" type="button" onClick={createSpouse}>Create spouse account</button>
+              </div>
+            </SectionCard>
+          ) : (
+            <SectionCard title="Spouse management">
+              <p>Only owners can create or manage spouse access.</p>
+            </SectionCard>
+          )}
         </div>
       )}
       {error ? <p className="error-text">{error}</p> : null}

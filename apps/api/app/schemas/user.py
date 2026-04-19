@@ -13,6 +13,10 @@ class UserMeResponse(BaseModel):
     created_at: datetime
 
 
+class SpouseStatusResponse(BaseModel):
+    spouse: UserMeResponse | None
+
+
 class CreateSpouseRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=128)
