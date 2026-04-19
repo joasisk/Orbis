@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
+from app.models.audit_event import AuditEvent
 from app.models.planning import DailySchedule, DailyScheduleItem
 from app.models.reminder import ReminderEvent
 from app.models.user import User
@@ -12,6 +13,22 @@ from app.schemas.reminders import ReminderEventCreateRequest, ReminderEventRespo
 
 
 class ReminderService:
+    @staticmethod
+    def _record_audit_event(
+        db: Session,
+        *,
+        actor_user_id: str | None,
+        event_type: str,
+        metadata: dict,
+    ) -> None:
+        db.add(
+            AuditEvent(
+                actor_user_id=actor_user_id,
+                event_type=event_type,
+                event_metadata=metadata,
+            )
+        )
+
     @staticmethod
     def list_events(db: Session, actor: User, response_status: str | None = "pending") -> list[ReminderEvent]:
         stmt = select(ReminderEvent).where(ReminderEvent.owner_user_id == actor.id)
@@ -46,6 +63,17 @@ class ReminderService:
             response_status="pending",
         )
         db.add(event)
+        ReminderService._record_audit_event(
+            db,
+            actor_user_id=actor.id,
+            event_type="reminder.event_created",
+            metadata={
+                "owner_user_id": actor.id,
+                "daily_schedule_id": payload.daily_schedule_id,
+                "daily_schedule_item_id": payload.daily_schedule_item_id,
+                "delivery_channel": payload.delivery_channel,
+            },
+        )
         db.commit()
         db.refresh(event)
         return event
@@ -66,6 +94,19 @@ class ReminderService:
         event.response_status = payload.response_status
         event.responded_at = datetime.utcnow()
         event.response_delay_seconds = max(0, int((event.responded_at - event.sent_at).total_seconds()))
+        ReminderService._record_audit_event(
+            db,
+            actor_user_id=actor.id,
+            event_type="reminder.response_recorded",
+            metadata={
+                "owner_user_id": actor.id,
+                "reminder_event_id": event.id,
+                "daily_schedule_id": event.daily_schedule_id,
+                "daily_schedule_item_id": event.daily_schedule_item_id,
+                "response_status": payload.response_status,
+                "response_delay_seconds": event.response_delay_seconds,
+            },
+        )
         db.commit()
         db.refresh(event)
         return event
@@ -128,6 +169,18 @@ class ReminderService:
             )
             db.add(event)
             created.append(event)
+            ReminderService._record_audit_event(
+                db,
+                actor_user_id=actor.id,
+                event_type="reminder.delivered",
+                metadata={
+                    "owner_user_id": actor.id,
+                    "daily_schedule_id": item.daily_schedule_id,
+                    "daily_schedule_item_id": item.id,
+                    "delivery_channel": "in_app",
+                    "scheduled_scan_time": current.isoformat(),
+                },
+            )
 
         if created:
             db.commit()
