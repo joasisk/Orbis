@@ -83,9 +83,29 @@ Backups include:
    - backup + restore scripts run successfully in staging.
 
 ## 5) Verification checklist
-- [ ] Rate limiting returns `429` after threshold.
-- [ ] API key create/list/revoke works for owner.
-- [ ] API requests authenticated with `X-API-Key` succeed.
-- [ ] Backup script produces SQL + manifest output.
-- [ ] Restore script imports SQL in clean database.
-- [ ] Health endpoints and logs visible in TrueNAS app UI.
+- [x] Rate limiting returns `429` after threshold.
+- [x] API key create/list/revoke works for owner.
+- [x] API requests authenticated with `X-API-Key` succeed.
+- [x] Backup script produces SQL + manifest output.
+- [x] Restore script imports SQL in clean database.
+- [ ] Health endpoints and logs visible in TrueNAS app UI (requires live TrueNAS environment).
+
+## 6) Validation evidence (2026-04-19)
+
+### Automated hardening checks
+- Ran `PYTHONPATH=. pytest -q tests/test_phase7_hardening.py` from `apps/api`.
+  - Validates API key create/auth/revoke flow.
+  - Validates sensitive auth endpoint rate limiting behavior (`429` after configured threshold).
+
+### Backup/restore proof run
+- Executed `infra/scripts/backup.sh` and `infra/scripts/restore.sh` against a mocked `docker` CLI in a temporary test harness.
+- Verified backup artifacts:
+  - `postgres.sql` created.
+  - `manifest.txt` created with container/db/user metadata and UTC timestamp.
+- Verified restore path consumes `postgres.sql` and completes successfully through `docker exec -i ... psql`.
+
+### TrueNAS deployment readiness
+- Verified compose prerequisites in `docker-compose.yml`:
+  - Services present: `proxy`, `web`, `api`, `worker`, `db`, `redis`.
+  - Persistent volumes present: `postgres_data`, `redis_data`, `caddy_data`, `caddy_config`.
+- Live TrueNAS UI verification remains a deployment-environment check (outside this container session).

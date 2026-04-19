@@ -86,10 +86,15 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
 - A dedicated spouse-facing dashboard/experience is not yet confirmed in this assessment.
 
 ## Phase 7 — Hardening and TrueNAS packaging
-**Status:** ⚠️ Partial
+**Status:** ⚠️ Substantially validated (environment-limited)
 
 - Core local stack and architecture are in place.
-- Production hardening criteria (backup/restore validation, rate limiting/API keys, TrueNAS-ready deployment proof) were not re-verified in this pass.
+- Re-validated in this pass:
+  - API hardening checks for rate limiting and API key flow (`apps/api/tests/test_phase7_hardening.py`).
+  - Backup/restore script behavior via repeatable script-harness execution.
+  - Compose-level TrueNAS prerequisites (required services + persistent volumes).
+- Remaining environment-specific proof:
+  - TrueNAS app UI log visibility and post-deploy health checks still require a live TrueNAS SCALE deployment run.
 
 ---
 
@@ -140,9 +145,9 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
    - Validate influence UX and weighting behavior without overriding owner data.
 
 4. **Phase 7 — Hardening and deployment proof**
-   - Add repeatable backup/restore verification.
-   - Add baseline operational/security checks (rate limiting, API key flow where applicable).
-   - Produce deployment runbook validation for TrueNAS target.
+   - ✅ Add repeatable backup/restore verification.
+   - ✅ Add baseline operational/security checks (rate limiting, API key flow where applicable).
+   - ⚠️ Complete live TrueNAS deployment UI/log verification in target environment.
 
 5. **Tracking update**
    - Add a concise MVP status matrix in docs with links to implemented endpoints/pages and explicit pending items.
@@ -153,4 +158,4 @@ The repository appears to be **through Phase 4 backend baseline** with **Phase 3
 
 - **High confidence:** phases 1–4 backend baseline capabilities exist and pass automated checks.
 - **Medium confidence:** end-user day-to-day workflow polish in web (especially focus-first entry experience).
-- **Lower confidence:** phase 6+ UX and operational hardening tracks, pending explicit completion evidence.
+- **Lower confidence:** phase 6 spouse UX and final live-environment deployment verification, pending explicit completion evidence.
