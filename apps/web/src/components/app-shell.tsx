@@ -39,9 +39,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/schedule", label: translate(language, "trajectory"), match: (path) => path.startsWith("/schedule") },
     { href: "/areas", label: translate(language, "orbits"), match: (path) => path.startsWith("/areas") },
     {
-      href: "/projects",
-      label: translate(language, "longTermPlan"),
-      match: (path) => path.startsWith("/projects") || path.startsWith("/tasks"),
+      href: "/unlisted-routes",
+      label: translate(language, "unlistedRoutes"),
+      match: (path) => path.startsWith("/unlisted-routes"),
     },
   ]), [language]);
 
