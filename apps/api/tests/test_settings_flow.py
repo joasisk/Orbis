@@ -134,6 +134,52 @@ def test_spouse_can_read_and_update_own_language_settings() -> None:
             pass
 
 
+def test_owner_can_set_new_supported_ui_languages() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+
+    try:
+        _bootstrap_owner(client)
+        owner_tokens = _login(client, "owner@example.com", "Password123!")
+        headers = _auth_headers(owner_tokens["access_token"])
+
+        for language in ["de", "it", "es", "pl"]:
+            patch_resp = client.patch(
+                "/api/v1/settings/me",
+                headers=headers,
+                json={"ui_language": language},
+            )
+            assert patch_resp.status_code == 200
+            assert patch_resp.json()["ui_language"] == language
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_invalid_ui_language_is_rejected() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+
+    try:
+        _bootstrap_owner(client)
+        owner_tokens = _login(client, "owner@example.com", "Password123!")
+        headers = _auth_headers(owner_tokens["access_token"])
+
+        invalid_resp = client.patch(
+            "/api/v1/settings/me",
+            headers=headers,
+            json={"ui_language": "fr"},
+        )
+        assert invalid_resp.status_code == 422
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
 def test_guardrail_rejects_disabling_manual_approval_when_auto_generation_on() -> None:
     client_gen = _client_with_test_db()
     client = next(client_gen)
