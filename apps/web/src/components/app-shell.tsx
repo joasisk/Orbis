@@ -21,6 +21,9 @@ const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/a
 const ACCESS_TOKEN_COOKIE = "orbis_access_token";
 const ACCESS_TOKEN_KEY = "orbis_access_token";
 const REFRESH_TOKEN_KEY = "orbis_refresh_token";
+const THEME_KEY = "orbis_theme";
+
+type Theme = "light" | "dark";
 
 type MeResponse = {
   email: string;
@@ -32,6 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>("light");
   const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
 
   const clearAuthState = useCallback((redirectToLogin = true) => {
@@ -67,6 +71,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     void loadMe();
   }, [authRoute, clearAuthState]);
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem(THEME_KEY);
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setTheme(savedTheme);
+      document.documentElement.dataset.theme = savedTheme;
+      return;
+    }
+
+    document.documentElement.dataset.theme = "light";
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
 
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
@@ -109,6 +129,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     clearAuthState();
   };
 
+  const toggleTheme = () => {
+    setTheme((current) => (current === "light" ? "dark" : "light"));
+  };
+
   if (authRoute) {
     return <main className="auth-layout">{children}</main>;
   }
@@ -142,6 +166,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="user-menu" role="menu">
               <Link href="/settings" role="menuitem">User Settings</Link>
               <Link href="/settings" role="menuitem">App Settings</Link>
+              <button type="button" onClick={toggleTheme} role="menuitem">
+                {theme === "dark" ? "Use light theme" : "Use dark theme"}
+              </button>
               <button type="button" onClick={handleLogout} role="menuitem">Logout</button>
             </div>
           ) : null}
