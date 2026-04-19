@@ -284,3 +284,63 @@ See dated rollout in `docs/SCHEDULE_AND_PERFORMANCE_MODEL_PLAN.md` (current targ
 - Private items must not leak into spouse-visible schedule views.
 - Owner priority fields remain distinct from spouse influence fields.
 
+---
+
+## Planned extension: scheduled-action configuration model (settings-driven)
+
+To support requirement-level cadence controls (weekly planning cadence, periodic note ingestion, and configurable worker-driven automation), extend the settings model with an explicit per-owner schedule configuration structure. This keeps policy close to existing owner settings while preserving approval-first behavior.
+
+### Why this extension
+- Requirements call for weekly planning generation on a schedule (Sunday 20:00 baseline) and periodic note ingestion/scanning behavior.
+- Architecture places these as worker responsibilities, so owner-editable scheduling metadata must be persisted in API-owned storage.
+- Existing `user_settings` already stores AI toggles; cadence plus a single global app timezone are the missing pieces.
+
+### Option A (recommended for MVP): add fields to `user_settings`
+Add nullable/defaulted columns:
+- `weekly_planning_enabled: bool` (default `true`)
+- `weekly_planning_day_of_week: int` (`0..6`, Sunday default `0`)
+- `weekly_planning_time_local: string` (`HH:MM`, default `20:00`)
+- `app_timezone: string` (IANA TZ, global setting used by all scheduler/action cadence evaluation)
+- `notes_scan_enabled: bool` (default `false`)
+- `notes_scan_frequency: string` (`daily|weekly`)
+- `notes_scan_day_of_week: int | null` (`0..6`, required when weekly)
+- `notes_scan_time_local: string | null` (`HH:MM`)
+- `reminder_scan_interval_minutes: int` (bounded, e.g. `5..240`)
+- `automation_pause_until: datetime | null` (temporary pause switch)
+
+Validation/guardrails:
+- If `ai_auto_generate_weekly=true`, `ai_require_manual_approval` must stay `true`.
+- `weekly_planning_*` values must be complete when enabled.
+- `notes_scan_*` values must be complete when notes scan is enabled.
+
+### Option B (future scale): separate `automation_schedules` table
+If multiple schedules per action become necessary, introduce:
+- `automation_schedules(id, owner_user_id, action_type, enabled, cron_expr | day/time fields, timezone, metadata_json, created_at, updated_at)`
+- Unique constraint: `(owner_user_id, action_type)`
+- Worker consumes normalized records; settings UI still reads/writes through `/settings/me` façade.
+
+### Planned relationships
+```mermaid
+erDiagram
+    users ||--|| user_settings : owns
+    user_settings {
+      string id PK
+      string owner_user_id FK
+      bool ai_planning_enabled
+      bool ai_auto_generate_weekly
+      bool ai_require_manual_approval
+      string app_timezone
+      bool weekly_planning_enabled
+      int weekly_planning_day_of_week
+      string weekly_planning_time_local
+      bool notes_scan_enabled
+      string notes_scan_frequency
+      int notes_scan_day_of_week
+      string notes_scan_time_local
+      int reminder_scan_interval_minutes
+      datetime automation_pause_until
+    }
+```
+
+### Worker read model (non-authoritative)
+Workers should derive run decisions from this persisted configuration plus idempotency checks. All cadence times are interpreted in `app_timezone` (global owner setting), not per-action timezones. Scheduled jobs must create proposals/suggestions only; schedule mutation remains behind owner approval actions.
