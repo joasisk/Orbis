@@ -150,6 +150,10 @@ export function SettingsDashboard() {
             >
               <option value="en">{translate(language, "languageEnglish")}</option>
               <option value="sk">{translate(language, "languageSlovak")}</option>
+              <option value="de">{translate(language, "languageGerman")}</option>
+              <option value="it">{translate(language, "languageItalian")}</option>
+              <option value="es">{translate(language, "languageSpanish")}</option>
+              <option value="pl">{translate(language, "languagePolish")}</option>
             </select>
           </SectionCard>
 
