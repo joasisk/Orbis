@@ -29,6 +29,7 @@ When instructions conflict, prefer the highest item in this list unless an expli
 - Do **not** expose private items to spouse-facing views.
 - Do **not** merge owner priority values with spouse influence values into one field.
 - Do **not** add gamification/noisy engagement mechanics by default.
+- When new user-readable text is added to the UI, add translations for all available languages.
 - Preserve low-friction, low-overwhelm UX decisions.
 
 ## Architecture and design constraints

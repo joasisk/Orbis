@@ -40,9 +40,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       { href: "/schedule", label: translate(language, "trajectory"), match: (path) => path.startsWith("/schedule") },
       { href: "/areas", label: translate(language, "orbits"), match: (path) => path.startsWith("/areas") },
       {
-        href: "/projects",
-        label: translate(language, "longTermPlan"),
-        match: (path) => path.startsWith("/projects") || path.startsWith("/tasks"),
+        href: "/unlisted-routes",
+        label: translate(language, "unlistedRoutes"),
+        match: (path) => path.startsWith("/unlisted-routes"),
       },
     ];
     if (me?.role === "spouse") {
@@ -183,8 +183,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           {menuOpen ? (
             <div className="user-menu" role="menu">
-              <Link href="/settings" role="menuitem">{translate(language, "userSettings")}</Link>
-              <Link href="/settings" role="menuitem">{translate(language, "appSettings")}</Link>
+              <Link href="/settings/user" role="menuitem">{translate(language, "userSettings")}</Link>
+              <Link href="/settings/app" role="menuitem">{translate(language, "appSettings")}</Link>
               <button type="button" onClick={toggleTheme} role="menuitem">
                 {theme === "dark" ? translate(language, "useLightTheme") : translate(language, "useDarkTheme")}
               </button>
