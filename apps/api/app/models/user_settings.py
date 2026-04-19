@@ -26,6 +26,7 @@ class UserSettings(Base):
     ai_auto_generate_weekly: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ai_require_manual_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     ai_preferred_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ui_language: Mapped[str] = mapped_column(String(8), nullable=False, default="en")
     session_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)

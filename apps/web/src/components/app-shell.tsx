@@ -4,20 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { openTaskModal, TaskModalHost } from "@/components/entity-management";
-import { uiTerminology } from "@/lib/ui-terminology";
+import { translate } from "@/lib/i18n";
+import { useUiLanguage } from "@/lib/use-ui-language";
 
 type NavItem = {
   href: string;
   label: string;
   match: (pathname: string) => boolean;
 };
-
-const navItems: NavItem[] = [
-  { href: "/", label: uiTerminology.burn.singular, match: (pathname) => pathname === "/" },
-  { href: "/schedule", label: uiTerminology.trajectory.singular, match: (pathname) => pathname.startsWith("/schedule") },
-  { href: "/areas", label: uiTerminology.orbit.plural, match: (pathname) => pathname.startsWith("/areas") },
-  { href: "/projects", label: "Long Term Plan", match: (pathname) => pathname.startsWith("/projects") || pathname.startsWith("/tasks") },
-];
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 const ACCESS_TOKEN_COOKIE = "orbis_access_token";
@@ -38,7 +32,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("light");
+  const { language } = useUiLanguage();
   const authRoute = pathname.startsWith("/login") || pathname.startsWith("/claim");
+  const navItems: NavItem[] = useMemo(() => ([
+    { href: "/", label: translate(language, "burn"), match: (path) => path === "/" },
+    { href: "/schedule", label: translate(language, "trajectory"), match: (path) => path.startsWith("/schedule") },
+    { href: "/areas", label: translate(language, "orbits"), match: (path) => path.startsWith("/areas") },
+    {
+      href: "/projects",
+      label: translate(language, "longTermPlan"),
+      match: (path) => path.startsWith("/projects") || path.startsWith("/tasks"),
+    },
+  ]), [language]);
 
   const clearAuthState = useCallback((redirectToLogin = true) => {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -159,7 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <button className="app-button app-button--primary sidebar-cta" type="button" onClick={() => openTaskModal({ mode: "create" })}>
-          Add Task
+          {translate(language, "addTask")}
         </button>
 
         <div className="sidebar-user" onClick={(event) => event.stopPropagation()}>
@@ -170,12 +175,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           {menuOpen ? (
             <div className="user-menu" role="menu">
-              <Link href="/settings" role="menuitem">User Settings</Link>
-              <Link href="/settings" role="menuitem">App Settings</Link>
+              <Link href="/settings" role="menuitem">{translate(language, "userSettings")}</Link>
+              <Link href="/settings" role="menuitem">{translate(language, "appSettings")}</Link>
               <button type="button" onClick={toggleTheme} role="menuitem">
-                {theme === "dark" ? "Use light theme" : "Use dark theme"}
+                {theme === "dark" ? translate(language, "useLightTheme") : translate(language, "useDarkTheme")}
               </button>
-              <button type="button" onClick={handleLogout} role="menuitem">Logout</button>
+              <button type="button" onClick={handleLogout} role="menuitem">{translate(language, "logout")}</button>
             </div>
           ) : null}
         </div>

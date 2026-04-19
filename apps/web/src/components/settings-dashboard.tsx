@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { EmptyState, ScreenHeader, SectionCard } from "@/components/ui-kit";
+import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from "@/lib/i18n";
 
 type UserRole = "owner" | "spouse";
 
@@ -17,6 +18,7 @@ type SettingsPayload = {
   ai_auto_generate_weekly: boolean;
   ai_require_manual_approval: boolean;
   ai_preferred_provider: string | null;
+  ui_language: UiLanguage;
   session_note: string | null;
 };
 
@@ -42,6 +44,7 @@ export function SettingsDashboard() {
   const [spouseStatus, setSpouseStatus] = useState<SpouseStatusPayload | null>(null);
   const [spouseForm, setSpouseForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const language = form?.ui_language ?? DEFAULT_UI_LANGUAGE;
 
   useEffect(() => {
     const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
@@ -55,7 +58,7 @@ export function SettingsDashboard() {
     ]);
 
     if (!settingsResponse.ok || !meResponse.ok) {
-      setError("Could not load settings.");
+      setError(translate(language, "couldNotLoadSettings"));
       return;
     }
 
@@ -79,7 +82,7 @@ export function SettingsDashboard() {
       body: JSON.stringify(form),
     });
     if (!response.ok) {
-      setError("Save failed.");
+      setError(translate(language, "saveFailed"));
       return;
     }
     setForm((await response.json()) as SettingsPayload);
@@ -111,48 +114,61 @@ export function SettingsDashboard() {
   return (
     <section className="screen-flow">
       <ScreenHeader
-        title="Settings"
-        subtitle="User and app configuration"
+        title={translate(language, "settingsTitle")}
+        subtitle={translate(language, "settingsSubtitle")}
         actions={(
           <>
-            <input className="app-input" value={token} onChange={(event) => setToken(event.target.value)} placeholder="Access token" />
-            <button className="app-button app-button--primary" type="button" onClick={loadSettings}>Load</button>
+            <input className="app-input" value={token} onChange={(event) => setToken(event.target.value)} placeholder={translate(language, "accessToken")} />
+            <button className="app-button app-button--primary" type="button" onClick={loadSettings}>{translate(language, "load")}</button>
           </>
         )}
       />
 
-      {!form ? <EmptyState message="Load settings to edit notification and planning controls." /> : (
+      {!form ? <EmptyState message={translate(language, "loadSettingsEmpty")} /> : (
         <div className="two-col">
-          <SectionCard title="Notification Settings">
-            <label><input type="checkbox" checked={form.reminder_enabled} onChange={(event) => setForm({ ...form, reminder_enabled: event.target.checked })} /> Reminder enabled</label>
+          <SectionCard title={translate(language, "notificationSettings")}>
+            <label><input type="checkbox" checked={form.reminder_enabled} onChange={(event) => setForm({ ...form, reminder_enabled: event.target.checked })} /> {translate(language, "reminderEnabled")}</label>
             <input className="app-input" value={form.reminder_window_start} onChange={(event) => setForm({ ...form, reminder_window_start: event.target.value })} />
             <input className="app-input" value={form.reminder_window_end} onChange={(event) => setForm({ ...form, reminder_window_end: event.target.value })} />
           </SectionCard>
 
-          <SectionCard title="AI / Planning Settings" tone="accent">
-            <label><input type="checkbox" checked={form.ai_planning_enabled} onChange={(event) => setForm({ ...form, ai_planning_enabled: event.target.checked })} /> AI planning enabled</label>
-            <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> Auto-generate Trajectory</label>
-            <label><input type="checkbox" checked={form.ai_require_manual_approval} onChange={(event) => setForm({ ...form, ai_require_manual_approval: event.target.checked })} /> Require manual approval</label>
-            <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder="Preferred provider" />
-            <button className="app-button app-button--primary" type="button" onClick={saveSettings}>Save settings</button>
+          <SectionCard title={translate(language, "aiPlanningSettings")} tone="accent">
+            <label><input type="checkbox" checked={form.ai_planning_enabled} onChange={(event) => setForm({ ...form, ai_planning_enabled: event.target.checked })} /> {translate(language, "aiPlanningEnabled")}</label>
+            <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> {translate(language, "autoGenerateTrajectory")}</label>
+            <label><input type="checkbox" checked={form.ai_require_manual_approval} onChange={(event) => setForm({ ...form, ai_require_manual_approval: event.target.checked })} /> {translate(language, "requireManualApproval")}</label>
+            <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder={translate(language, "preferredProvider")} />
+            <button className="app-button app-button--primary" type="button" onClick={saveSettings}>{translate(language, "saveSettings")}</button>
+          </SectionCard>
+
+          <SectionCard title={translate(language, "languageSettings")}>
+            <label htmlFor="ui-language">{translate(language, "languageLabel")}</label>
+            <select
+              id="ui-language"
+              className="app-input"
+              value={form.ui_language}
+              onChange={(event) => setForm({ ...form, ui_language: event.target.value as UiLanguage })}
+            >
+              <option value="en">{translate(language, "languageEnglish")}</option>
+              <option value="sk">{translate(language, "languageSlovak")}</option>
+            </select>
           </SectionCard>
 
           {role === "owner" ? (
-            <SectionCard title="Spouse management">
+            <SectionCard title={translate(language, "spouseManagement")}>
               {spouseStatus?.spouse ? (
-                <p>Linked spouse: {spouseStatus.spouse.email}</p>
+                <p>{translate(language, "linkedSpouse")}: {spouseStatus.spouse.email}</p>
               ) : (
-                <p>No spouse account linked yet.</p>
+                <p>{translate(language, "noSpouse")}</p>
               )}
               <div className="stack-form">
-                <input className="app-input" placeholder="Spouse email" value={spouseForm.email} onChange={(event) => setSpouseForm({ ...spouseForm, email: event.target.value })} />
-                <input className="app-input" type="password" placeholder="Spouse password" value={spouseForm.password} onChange={(event) => setSpouseForm({ ...spouseForm, password: event.target.value })} />
-                <button className="app-button app-button--primary" type="button" onClick={createSpouse}>Create spouse account</button>
+                <input className="app-input" placeholder={translate(language, "spouseEmail")} value={spouseForm.email} onChange={(event) => setSpouseForm({ ...spouseForm, email: event.target.value })} />
+                <input className="app-input" type="password" placeholder={translate(language, "spousePassword")} value={spouseForm.password} onChange={(event) => setSpouseForm({ ...spouseForm, password: event.target.value })} />
+                <button className="app-button app-button--primary" type="button" onClick={createSpouse}>{translate(language, "createSpouse")}</button>
               </div>
             </SectionCard>
           ) : (
-            <SectionCard title="Spouse management">
-              <p>Only owners can create or manage spouse access.</p>
+            <SectionCard title={translate(language, "spouseManagement")}>
+              <p>{translate(language, "ownerOnlySpouse")}</p>
             </SectionCard>
           )}
         </div>
