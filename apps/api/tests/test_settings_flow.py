@@ -154,3 +154,36 @@ def test_guardrail_rejects_disabling_manual_approval_when_auto_generation_on() -
             next(client_gen)
         except StopIteration:
             pass
+
+
+def test_owner_can_view_audit_events_but_spouse_cannot() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+
+    try:
+        _bootstrap_owner(client)
+        owner_tokens = _login(client, "owner@example.com", "Password123!")
+        owner_headers = _auth_headers(owner_tokens["access_token"])
+
+        owner_audit_resp = client.get("/api/v1/settings/audit-events", headers=owner_headers)
+        assert owner_audit_resp.status_code == 200
+        payload = owner_audit_resp.json()
+        assert len(payload) > 0
+        assert payload[0]["event_type"].startswith("auth.")
+
+        spouse_create_response = client.post(
+            "/api/v1/users/spouse",
+            headers=owner_headers,
+            json={"email": "spouse@example.com", "password": "Password123!"},
+        )
+        assert spouse_create_response.status_code == 201
+        spouse_tokens = _login(client, "spouse@example.com", "Password123!")
+        spouse_headers = _auth_headers(spouse_tokens["access_token"])
+
+        spouse_audit_resp = client.get("/api/v1/settings/audit-events", headers=spouse_headers)
+        assert spouse_audit_resp.status_code == 403
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
