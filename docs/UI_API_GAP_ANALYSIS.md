@@ -9,10 +9,10 @@ Scope: Validate whether the current web UI is actually wired to API endpoints fo
 |---|---|---|
 | Login works from UI | ✅ Implemented | `AuthEntry` posts to `/auth/login` and stores access/refresh tokens. |
 | Logout works from UI | ✅ Implemented | `AppShell` posts to `/auth/logout` and clears local auth state. |
-| Daily schedule fetched on proper FE route access | ⚠️ Partial | `/schedule` route exists, but day/week fetch is manual via “Load Week” and day-click; no auto-fetch on route load. |
-| Weekly schedule fetched on proper FE route access | ⚠️ Partial | `/schedule` route exists, but `/schedules/weeks/{week_start_date}` is called only when user clicks “Load Week”. |
-| Areas of life fetched on proper FE route access | ⚠️ Partial | Areas are fetched on `/` only after clicking “Refresh” (not automatic on route entry). |
-| Projects fetched on proper FE route access | ⚠️ Partial | `/projects` page exists, but list fetch is manual via “Refresh” button. |
+| Daily schedule fetched on proper FE route access | ✅ Implemented | `/` and `/schedule` both auto-load daily schedule context from `/schedules/days/{schedule_date}` when auth token exists. |
+| Weekly schedule fetched on proper FE route access | ✅ Implemented | `/` and `/schedule` auto-load weekly schedule context from `/schedules/weeks/{week_start_date}` when auth token exists. |
+| Areas of life fetched on proper FE route access | ✅ Implemented | `/` auto-loads `GET /areas` when auth token exists and still keeps manual refresh fallback. |
+| Projects fetched on proper FE route access | ✅ Implemented | `/projects` fetches list data on route entry when auth token exists and retains manual refresh fallback. |
 | All items can be created from UI | ❌ Not complete | UI creates Projects and Tasks, but has no UI create flow for Areas. |
 | User settings fetched and updated | ✅ Implemented | Settings page can GET/PATCH `/settings/me` via “Load” and “Save settings”. |
 | User can manage spouse | ❌ Not implemented in UI | API has `POST /users/spouse`, but no spouse management UI found. |
@@ -29,19 +29,19 @@ Scope: Validate whether the current web UI is actually wired to API endpoints fo
 Result: **Implemented**.
 
 ## 2) Daily + weekly schedule route hookup
-- `/schedule` route renders `ScheduleDashboard`.
-- `ScheduleDashboard` has API calls to:
-  - `GET /schedules/weeks/{weekDate}`
-  - `GET /schedules/days/{scheduleDate}`
-- But these calls happen only after explicit user actions (`Load Week` and clicking a day card). There is no effect that auto-loads schedules upon route access.
+- `/schedule` route renders `ScheduleDashboard` and auto-loads week/day context once auth is present.
+- `/` now also hydrates week/day context so daily/weekly status is visible in the default entry flow.
+- API calls used:
+  - `GET /schedules/weeks/{week_start_date}`
+  - `GET /schedules/days/{schedule_date}`
 
-Result: **Partially implemented** (endpoint wiring exists, route-triggered auto-fetch missing).
+Result: **Implemented**.
 
 ## 3) Areas of life + projects route hookup
-- Areas are requested in `HomeDashboard` (`GET /areas`) on `/` **only when Refresh is clicked**.
-- Projects list fetch exists in `EntityManagement` (`GET /projects`) for `/projects` route, also **manual Refresh only**.
+- Areas are requested in `HomeDashboard` (`GET /areas`) on `/` automatically after token hydration, with manual refresh retained.
+- Projects list fetch in `EntityManagement` (`GET /projects`) runs automatically on route entry when auth is available.
 
-Result: **Partially implemented** (manual fetch instead of automatic on route access).
+Result: **Implemented** for route-entry data loading.
 
 ## 4) Create flows from UI
 - `EntityManagement` supports creation for:
@@ -70,11 +70,10 @@ Result:
 - **Spouse update priorities**: Supported via spouse influence endpoint, but UI support missing.
 
 ## Suggested next MVP-sized steps
-1. Add route-level auto-fetch on `/`, `/schedule`, and `/projects` when token exists.
-2. Add basic Areas CRUD UI (at minimum create + list).
-3. Add spouse management panel under `/settings`:
+1. Add basic Areas CRUD UI (at minimum create + list).
+2. Add spouse management panel under `/settings`:
    - create spouse account (owner only)
    - show linked spouse state.
-4. Add spouse-facing task influence controls:
+3. Add spouse-facing task influence controls:
    - `spouse_priority`, `spouse_urgency`, deadline influence fields.
-5. Clarify requirement wording: if “spouse can add tasks” is mandatory, update API authorization policy and tests accordingly; otherwise reframe as “spouse can influence priorities”.
+4. Clarify requirement wording: if “spouse can add tasks” is mandatory, update API authorization policy and tests accordingly; otherwise reframe as “spouse can influence priorities”.
