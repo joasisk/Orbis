@@ -48,7 +48,7 @@ export function ScheduleDashboard() {
     const response = await fetch(`${apiBase}/schedules/weeks/${weekDate}`, { headers: authHeaders(token), cache: "no-store" });
     if (!response.ok) {
       setIsLoadingWeek(false);
-      setError(`Could not load week (${response.status}).`);
+      setError(`Could not load Trajectory (${response.status}).`);
       return;
     }
     const payload = (await response.json()) as WeeklySchedule;
@@ -73,23 +73,23 @@ export function ScheduleDashboard() {
   return (
     <section className="screen-flow">
       <ScreenHeader
-        title={weekMode === "current" ? "Week — Current Week" : "Week — Future Weeks"}
-        subtitle="Execution and planning"
+        title={weekMode === "current" ? "Trajectory — This Week" : "Trajectory — Future Weeks"}
+        subtitle="Trajectory planning and execution"
         actions={(
           <>
-            <button className={`app-button ${weekMode === "current" ? "app-button--secondary" : ""}`} onClick={() => setWeekMode("current")} type="button">Current Week</button>
-            <button className={`app-button ${weekMode === "future" ? "app-button--secondary" : ""}`} onClick={() => setWeekMode("future")} type="button">Future Weeks</button>
+            <button className={`app-button ${weekMode === "current" ? "app-button--secondary" : ""}`} onClick={() => setWeekMode("current")} type="button">This Week’s Trajectory</button>
+            <button className={`app-button ${weekMode === "future" ? "app-button--secondary" : ""}`} onClick={() => setWeekMode("future")} type="button">Future Trajectories</button>
             <input className="app-input" placeholder="Access token" value={token} onChange={(event) => setToken(event.target.value)} />
             <input className="app-input app-input--short" value={weekDate} onChange={(event) => setWeekDate(event.target.value)} />
-            <button className="app-button app-button--primary" onClick={loadWeek} type="button">{isLoadingWeek ? "Loading..." : "Load Week"}</button>
+            <button className="app-button app-button--primary" onClick={loadWeek} type="button">{isLoadingWeek ? "Loading..." : "Load Trajectory"}</button>
           </>
         )}
       />
 
-      <SectionCard title="Week Grid">
+      <SectionCard title="Trajectory Grid">
         {weeklySchedule ? (
           <>
-            <p className="lead-copy">Week of {weeklySchedule.week_start_date}</p>
+            <p className="lead-copy">This week’s Trajectory starts {weeklySchedule.week_start_date}</p>
             <p><StatusPill label={weeklySchedule.status} /></p>
             <div className="week-grid">
               {weeklySchedule.days.map((day) => (
@@ -101,7 +101,7 @@ export function ScheduleDashboard() {
               ))}
             </div>
           </>
-        ) : <EmptyState message={isLoadingWeek ? "Loading current week..." : "Load a week to see execution and planning context."} />}
+        ) : <EmptyState message={isLoadingWeek ? "Loading this week’s Trajectory..." : "Load a Trajectory to see planning and execution context."} />}
       </SectionCard>
 
       <SectionCard title={weekMode === "current" ? "Overload / blockers strip" : "Planning Suggestions"}>
@@ -114,7 +114,7 @@ export function ScheduleDashboard() {
               </li>
             ))}
           </ul>
-        ) : <EmptyState message="Pick a day to inspect details." />}
+        ) : <EmptyState message="Pick a Burn to inspect details." />}
       </SectionCard>
       {error ? <p className="error-text">{error}</p> : null}
     </section>

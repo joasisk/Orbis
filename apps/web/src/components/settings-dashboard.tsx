@@ -131,7 +131,7 @@ export function SettingsDashboard() {
 
           <SectionCard title="AI / Planning Settings" tone="accent">
             <label><input type="checkbox" checked={form.ai_planning_enabled} onChange={(event) => setForm({ ...form, ai_planning_enabled: event.target.checked })} /> AI planning enabled</label>
-            <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> Auto-generate weekly</label>
+            <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> Auto-generate Trajectory</label>
             <label><input type="checkbox" checked={form.ai_require_manual_approval} onChange={(event) => setForm({ ...form, ai_require_manual_approval: event.target.checked })} /> Require manual approval</label>
             <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder="Preferred provider" />
             <button className="app-button app-button--primary" type="button" onClick={saveSettings}>Save settings</button>

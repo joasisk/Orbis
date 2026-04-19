@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { openTaskModal, TaskModalHost } from "@/components/entity-management";
+import { uiTerminology } from "@/lib/ui-terminology";
 
 type NavItem = {
   href: string;
@@ -12,9 +13,9 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Day", match: (pathname) => pathname === "/" },
-  { href: "/schedule", label: "Week", match: (pathname) => pathname.startsWith("/schedule") },
-  { href: "/areas", label: "Areas", match: (pathname) => pathname.startsWith("/areas") },
+  { href: "/", label: uiTerminology.burn.singular, match: (pathname) => pathname === "/" },
+  { href: "/schedule", label: uiTerminology.trajectory.singular, match: (pathname) => pathname.startsWith("/schedule") },
+  { href: "/areas", label: uiTerminology.orbit.plural, match: (pathname) => pathname.startsWith("/areas") },
   { href: "/projects", label: "Long Term Plan", match: (pathname) => pathname.startsWith("/projects") || pathname.startsWith("/tasks") },
 ];
 

@@ -82,7 +82,7 @@ export function FocusPlanningDashboard() {
     setSuccess("");
 
     if (!token) {
-      setError("Add an access token to load your plan.");
+      setError("Add an access token to load your Burn plan.");
       return;
     }
 
@@ -96,17 +96,17 @@ export function FocusPlanningDashboard() {
 
     setIsLoadingPlan(false);
     if (!response.ok) {
-      setError(`Could not load daily plan (${response.status}).`);
+      setError(`Could not load Burn plan (${response.status}).`);
       return;
     }
 
     setPlan((await response.json()) as DailyPlanResponse);
-    setSuccess("Daily plan refreshed.");
+    setSuccess("Burn plan refreshed.");
   }
 
   async function callFocusEndpoint(path: string, payload: Record<string, unknown>) {
     if (!token) {
-      setError("Add an access token to run focus actions.");
+      setError("Add an access token to run Burn actions.");
       return null;
     }
 
@@ -143,12 +143,12 @@ export function FocusPlanningDashboard() {
     }
 
     setActiveSession((await response.json()) as FocusSessionResponse);
-    setSuccess("Focus session started.");
+    setSuccess("Burn started.");
   }
 
   async function stopFocus() {
     if (!activeSession) {
-      setError("No active focus session.");
+      setError("No active Burn session.");
       return;
     }
 
@@ -163,13 +163,13 @@ export function FocusPlanningDashboard() {
 
     const payload = (await response.json()) as FocusSessionResponse;
     setActiveSession(payload.status === "active" ? payload : null);
-    setSuccess("Focus session stopped.");
+    setSuccess("Burn stopped.");
     await loadPlan();
   }
 
   async function sidetrack() {
     if (!activeSession) {
-      setError("No active focus session.");
+      setError("No active Burn session.");
       return;
     }
 
@@ -189,7 +189,7 @@ export function FocusPlanningDashboard() {
 
   async function unableToFinish() {
     if (!activeSession) {
-      setError("No active focus session.");
+      setError("No active Burn session.");
       return;
     }
     if (unableReason.trim().length < 3) {
@@ -228,11 +228,11 @@ export function FocusPlanningDashboard() {
                 <span>Primary recommendation</span>
                 <span>{plan ? new Date(plan.generated_at).toLocaleTimeString() : "Not loaded"}</span>
               </div>
-              <h3>{doNowTask?.title ?? "Load your daily plan"}</h3>
+              <h3>{doNowTask?.title ?? "Load your Burn plan"}</h3>
               <p>
                 {doNowTask
                   ? `Score ${doNowTask.score.toFixed(2)} · Status ${doNowTask.status}`
-                  : "Request your plan to see your current best next task and fallback options."}
+                  : "Request your Burn plan to see your current best next task and fallback options."}
               </p>
               {doNowTask?.reasons.length ? (
                 <ul className="orbit-checklist" style={{ marginTop: "0.75rem" }}>
@@ -262,7 +262,7 @@ export function FocusPlanningDashboard() {
 
       <aside className="orbit-panels">
         <section className="orbit-panel">
-          <h2 className="orbit-section-label">Daily planning</h2>
+          <h2 className="orbit-section-label">Burn planning</h2>
           <div className="field-grid">
             <input
               className="input-field"
@@ -287,7 +287,7 @@ export function FocusPlanningDashboard() {
         </section>
 
         <section className="orbit-panel">
-          <h2 className="orbit-section-label">Focus actions</h2>
+          <h2 className="orbit-section-label">Burn actions</h2>
           <p>Session: {activeSession ? `${activeSession.status} (${activeSession.id.slice(0, 8)})` : "No active session"}</p>
           <div className="field-grid" style={{ marginTop: "0.8rem" }}>
             <input
@@ -301,7 +301,7 @@ export function FocusPlanningDashboard() {
               placeholder="Pre-task energy"
             />
             <button className="btn btn-primary" type="button" onClick={startFocus}>
-              Start focus
+              Start Burn
             </button>
 
             <input
@@ -315,7 +315,7 @@ export function FocusPlanningDashboard() {
               placeholder="Post-task energy"
             />
             <button className="btn btn-secondary" type="button" onClick={stopFocus}>
-              Stop focus
+              Stop Burn
             </button>
           </div>
         </section>
