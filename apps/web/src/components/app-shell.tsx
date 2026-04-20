@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { openTaskModal, TaskModalHost } from "@/components/entity-management";
 import { translate } from "@/lib/i18n";
 import { useUiLanguage } from "@/lib/use-ui-language";
@@ -51,22 +51,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return baseItems;
   }, [language, me?.role]);
 
-  const clearAuthState = useCallback((redirectToLogin = true) => {
+  const hasRedirectedToLoginRef = useRef(false);
+
+  const clearAuthState = useCallback((redirectToLogin = true, reason: "session_expired" | "signed_out" = "signed_out") => {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
     window.localStorage.removeItem(REFRESH_TOKEN_KEY);
     document.cookie = `${ACCESS_TOKEN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
     document.cookie = `${ACCESS_TOKEN_COOKIE}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; SameSite=Lax`;
     setMe(null);
-    if (redirectToLogin) {
-      router.replace("/login");
+    if (redirectToLogin && !hasRedirectedToLoginRef.current) {
+      hasRedirectedToLoginRef.current = true;
+      const params = new URLSearchParams({ reason });
+      router.replace(`/login?${params.toString()}`);
     }
   }, [router]);
+
+  useEffect(() => {
+    if (authRoute) {
+      hasRedirectedToLoginRef.current = false;
+      return;
+    }
+
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      const [input] = args;
+      const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (response.status === 401 && requestUrl.startsWith(apiBase)) {
+        clearAuthState(true, "session_expired");
+      }
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [authRoute, clearAuthState]);
 
   useEffect(() => {
     if (authRoute) return;
     const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
     if (!accessToken) {
-      clearAuthState();
+      clearAuthState(true, "session_expired");
       return;
     }
 
@@ -76,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         cache: "no-store",
       });
       if (!response.ok) {
-        if (response.status === 401) clearAuthState();
+        if (response.status === 401) clearAuthState(true, "session_expired");
         return;
       }
       setMe((await response.json()) as MeResponse);

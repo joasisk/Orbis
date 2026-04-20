@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DEFAULT_UI_LANGUAGE, type UiLanguage, translate } from "@/lib/i18n";
 
 type Mode = "login" | "claim";
@@ -22,6 +22,7 @@ function saveAuthTokens(accessToken: string, refreshToken: string): void {
 
 export function AuthEntry({ mode }: { mode: Mode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [language, setLanguage] = useState<UiLanguage>(DEFAULT_UI_LANGUAGE);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +40,12 @@ export function AuthEntry({ mode }: { mode: Mode }) {
     const localLanguage = (window.localStorage.getItem("orbis_ui_language") as UiLanguage | null) ?? DEFAULT_UI_LANGUAGE;
     setLanguage(localLanguage);
   }, []);
+
+  useEffect(() => {
+    if (mode !== "login") return;
+    if (searchParams.get("reason") !== "session_expired") return;
+    setError(translate(language, "authSessionExpired"));
+  }, [language, mode, searchParams]);
 
   useEffect(() => {
     const run = async () => {
