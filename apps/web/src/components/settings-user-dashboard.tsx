@@ -25,18 +25,51 @@ type SettingsPayload = {
   ui_language: UiLanguage;
 };
 
+type AiAgentConfig = {
+  endpoint: string;
+  model: string;
+  apiKeyHint: string;
+  timeoutSeconds: number;
+  temperature: number;
+  promptPrefix: string;
+  weeklyPromptAppendix: string;
+  extractionPromptAppendix: string;
+};
+
+const AI_AGENT_CONFIG_STORAGE_KEY = "orbis_ai_agent_config";
+const DEFAULT_AI_AGENT_CONFIG: AiAgentConfig = {
+  endpoint: "",
+  model: "",
+  apiKeyHint: "",
+  timeoutSeconds: 60,
+  temperature: 0.3,
+  promptPrefix: "",
+  weeklyPromptAppendix: "",
+  extractionPromptAppendix: "",
+};
+
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 const headers = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 export function SettingsUserDashboard() {
   const [token, setToken] = useState("");
   const [form, setForm] = useState<SettingsPayload | null>(null);
+  const [agentConfig, setAgentConfig] = useState<AiAgentConfig>(DEFAULT_AI_AGENT_CONFIG);
   const [error, setError] = useState("");
+  const [agentConfigNotice, setAgentConfigNotice] = useState("");
   const language = form?.ui_language ?? DEFAULT_UI_LANGUAGE;
 
   useEffect(() => {
     const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
     if (localToken) setToken(localToken);
+    const localAgentConfig = window.localStorage.getItem(AI_AGENT_CONFIG_STORAGE_KEY);
+    if (!localAgentConfig) return;
+    try {
+      const parsed = JSON.parse(localAgentConfig) as Partial<AiAgentConfig>;
+      setAgentConfig({ ...DEFAULT_AI_AGENT_CONFIG, ...parsed });
+    } catch {
+      setAgentConfig(DEFAULT_AI_AGENT_CONFIG);
+    }
   }, []);
 
   async function loadSettings() {
@@ -62,6 +95,21 @@ export function SettingsUserDashboard() {
       return;
     }
     setForm((await response.json()) as SettingsPayload);
+  }
+
+  function updateAgentConfig<K extends keyof AiAgentConfig>(key: K, value: AiAgentConfig[K]) {
+    setAgentConfig((current) => ({ ...current, [key]: value }));
+  }
+
+  function saveAgentConfigLocally() {
+    window.localStorage.setItem(AI_AGENT_CONFIG_STORAGE_KEY, JSON.stringify(agentConfig));
+    setAgentConfigNotice(translate(language, "aiAgentConfigSavedLocal"));
+  }
+
+  function resetAgentConfigLocally() {
+    setAgentConfig(DEFAULT_AI_AGENT_CONFIG);
+    window.localStorage.removeItem(AI_AGENT_CONFIG_STORAGE_KEY);
+    setAgentConfigNotice(translate(language, "aiAgentConfigResetLocal"));
   }
 
   useEffect(() => {
@@ -115,6 +163,88 @@ export function SettingsUserDashboard() {
             <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> {translate(language, "autoGenerateTrajectory")}</label>
             <label><input type="checkbox" checked={form.ai_require_manual_approval} onChange={(event) => setForm({ ...form, ai_require_manual_approval: event.target.checked })} /> {translate(language, "requireManualApproval")}</label>
             <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder={translate(language, "preferredProvider")} />
+          </SectionCard>
+
+          <SectionCard title={translate(language, "aiAgentConnectionTitle")} className="settings-form-card">
+            <p>{translate(language, "aiAgentConnectionDescription")}</p>
+            <label htmlFor="agent-endpoint">{translate(language, "aiAgentEndpointLabel")}</label>
+            <input
+              id="agent-endpoint"
+              className="app-input"
+              value={agentConfig.endpoint}
+              onChange={(event) => updateAgentConfig("endpoint", event.target.value)}
+              placeholder={translate(language, "aiAgentEndpointPlaceholder")}
+            />
+            <label htmlFor="agent-model">{translate(language, "aiAgentModelLabel")}</label>
+            <input
+              id="agent-model"
+              className="app-input"
+              value={agentConfig.model}
+              onChange={(event) => updateAgentConfig("model", event.target.value)}
+              placeholder={translate(language, "aiAgentModelPlaceholder")}
+            />
+            <label htmlFor="agent-api-key-hint">{translate(language, "aiAgentApiKeyLabel")}</label>
+            <input
+              id="agent-api-key-hint"
+              className="app-input"
+              value={agentConfig.apiKeyHint}
+              onChange={(event) => updateAgentConfig("apiKeyHint", event.target.value)}
+              placeholder={translate(language, "aiAgentApiKeyPlaceholder")}
+            />
+            <label htmlFor="agent-timeout">{translate(language, "aiAgentTimeoutLabel")}</label>
+            <input
+              id="agent-timeout"
+              className="app-input"
+              type="number"
+              min="5"
+              max="300"
+              value={agentConfig.timeoutSeconds}
+              onChange={(event) => updateAgentConfig("timeoutSeconds", Number(event.target.value))}
+            />
+            <label htmlFor="agent-temperature">{translate(language, "aiAgentTemperatureLabel")}</label>
+            <input
+              id="agent-temperature"
+              className="app-input"
+              type="number"
+              min="0"
+              max="2"
+              step="0.1"
+              value={agentConfig.temperature}
+              onChange={(event) => updateAgentConfig("temperature", Number(event.target.value))}
+            />
+            <p>{translate(language, "aiAgentPromptOverridesDescription")}</p>
+            <label htmlFor="agent-prompt-prefix">{translate(language, "aiPromptPrefixLabel")}</label>
+            <textarea
+              id="agent-prompt-prefix"
+              className="app-input"
+              rows={4}
+              value={agentConfig.promptPrefix}
+              onChange={(event) => updateAgentConfig("promptPrefix", event.target.value)}
+              placeholder={translate(language, "aiPromptPrefixPlaceholder")}
+            />
+            <label htmlFor="agent-weekly-prompt">{translate(language, "aiWeeklyPromptAppendixLabel")}</label>
+            <textarea
+              id="agent-weekly-prompt"
+              className="app-input"
+              rows={4}
+              value={agentConfig.weeklyPromptAppendix}
+              onChange={(event) => updateAgentConfig("weeklyPromptAppendix", event.target.value)}
+              placeholder={translate(language, "aiWeeklyPromptAppendixPlaceholder")}
+            />
+            <label htmlFor="agent-extraction-prompt">{translate(language, "aiExtractionPromptAppendixLabel")}</label>
+            <textarea
+              id="agent-extraction-prompt"
+              className="app-input"
+              rows={4}
+              value={agentConfig.extractionPromptAppendix}
+              onChange={(event) => updateAgentConfig("extractionPromptAppendix", event.target.value)}
+              placeholder={translate(language, "aiExtractionPromptAppendixPlaceholder")}
+            />
+            <div className="app-actions-row">
+              <button className="app-button app-button--primary" type="button" onClick={saveAgentConfigLocally}>{translate(language, "saveLocalAiConfig")}</button>
+              <button className="app-button" type="button" onClick={resetAgentConfigLocally}>{translate(language, "resetLocalAiConfig")}</button>
+            </div>
+            {agentConfigNotice ? <p>{agentConfigNotice}</p> : null}
           </SectionCard>
 
           <SectionCard title={translate(language, "scheduleAutomationSettings")} tone="accent" className="settings-form-card">
