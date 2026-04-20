@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { EmptyState, ScreenHeader, SectionCard, StatusPill } from "@/components/ui-kit";
+import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from "@/lib/i18n";
 
 type DailySchedule = {
   id: string;
@@ -15,6 +16,19 @@ type WeeklySchedule = {
   week_start_date: string;
   status: "proposed" | "accepted" | "rejected";
   days: DailySchedule[];
+};
+type WeeklyProposal = {
+  id: string;
+  week_start_date: string;
+  status: "proposed" | "approved" | "rejected";
+  items: Array<{ id: string; task_id: string; suggested_day: string; suggested_minutes: number; rationale: string; rank: number }>;
+};
+type NoteExtraction = {
+  id: string;
+  source_title: string;
+  source_ref: string | null;
+  status: "proposed" | "accepted" | "dismissed";
+  candidate_tasks: Array<{ title: string; notes: string | null }>;
 };
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -35,10 +49,20 @@ export function ScheduleDashboard() {
   const [weekMode, setWeekMode] = useState<"current" | "future">("current");
   const [error, setError] = useState("");
   const [isLoadingWeek, setIsLoadingWeek] = useState(false);
+  const [language, setLanguage] = useState<UiLanguage>(DEFAULT_UI_LANGUAGE);
+  const [proposal, setProposal] = useState<WeeklyProposal | null>(null);
+  const [proposalLoading, setProposalLoading] = useState(false);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteRef, setNoteRef] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+  const [extraction, setExtraction] = useState<NoteExtraction | null>(null);
+  const [selectedCandidateIdx, setSelectedCandidateIdx] = useState<number[]>([]);
 
   useEffect(() => {
     const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
     if (localToken) setToken(localToken);
+    const localLanguage = (window.localStorage.getItem("orbis_ui_language") as UiLanguage | null) ?? DEFAULT_UI_LANGUAGE;
+    setLanguage(localLanguage);
   }, []);
 
   async function loadWeek() {
@@ -69,6 +93,74 @@ export function ScheduleDashboard() {
     void loadWeek();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, weekDate]);
+
+  async function generateProposal() {
+    if (!token || proposalLoading) return;
+    setProposalLoading(true);
+    const response = await fetch(`${apiBase}/planning/weekly-proposals/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify({ week_start_date: weekDate }),
+    });
+    setProposalLoading(false);
+    if (!response.ok) {
+      setError(`${translate(language, "weeklyProposalError")} (${response.status}).`);
+      return;
+    }
+    setProposal((await response.json()) as WeeklyProposal);
+  }
+
+  async function loadLatestProposal() {
+    if (!token || proposalLoading) return;
+    setProposalLoading(true);
+    const response = await fetch(`${apiBase}/planning/weekly-proposals/latest`, { headers: authHeaders(token), cache: "no-store" });
+    setProposalLoading(false);
+    if (!response.ok) return;
+    setProposal((await response.json()) as WeeklyProposal);
+  }
+
+  async function approveProposal() {
+    if (!token || !proposal) return;
+    const response = await fetch(`${apiBase}/planning/weekly-proposals/${proposal.id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify({ edits: [] }),
+    });
+    if (!response.ok) {
+      setError(`${translate(language, "weeklyProposalApproveError")} (${response.status}).`);
+      return;
+    }
+    setProposal((await response.json()) as WeeklyProposal);
+  }
+
+  async function previewNoteExtraction() {
+    if (!token || !noteTitle || !noteContent) return;
+    const response = await fetch(`${apiBase}/planning/note-extractions/preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify({ source_title: noteTitle, source_ref: noteRef || null, note_content: noteContent }),
+    });
+    if (!response.ok) {
+      setError(`${translate(language, "noteExtractionError")} (${response.status}).`);
+      return;
+    }
+    setExtraction((await response.json()) as NoteExtraction);
+    setSelectedCandidateIdx([]);
+  }
+
+  async function submitExtractionDecision(decision: "accept" | "dismiss") {
+    if (!token || !extraction) return;
+    const response = await fetch(`${apiBase}/planning/note-extractions/${extraction.id}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify({ decision, selected_indices: decision === "accept" ? selectedCandidateIdx : [] }),
+    });
+    if (!response.ok) {
+      setError(`${translate(language, "noteExtractionDecisionError")} (${response.status}).`);
+      return;
+    }
+    setExtraction((await response.json()) as NoteExtraction);
+  }
 
   return (
     <section className="screen-flow">
@@ -115,6 +207,54 @@ export function ScheduleDashboard() {
             ))}
           </ul>
         ) : <EmptyState message="Pick a Burn to inspect details." />}
+      </SectionCard>
+      <SectionCard title={translate(language, "weeklyProposalTitle")} tone="accent">
+        <p>{translate(language, "weeklyProposalGuardrail")}</p>
+        <div className="button-row">
+          <button className="app-button" type="button" onClick={loadLatestProposal}>{translate(language, "weeklyProposalLoadLatest")}</button>
+          <button className="app-button app-button--primary" type="button" onClick={generateProposal}>{proposalLoading ? "..." : translate(language, "weeklyProposalGenerate")}</button>
+          <button className="app-button app-button--secondary" type="button" onClick={approveProposal} disabled={!proposal || proposal.status !== "proposed"}>{translate(language, "weeklyProposalApprove")}</button>
+        </div>
+        {proposal ? (
+          <ul className="stack-list">
+            <li><strong>{translate(language, "statusLabel")}:</strong> {proposal.status}</li>
+            {proposal.items.map((item) => (
+              <li key={item.id}>#{item.rank} · {item.suggested_day} · {item.suggested_minutes}m · {item.rationale}</li>
+            ))}
+          </ul>
+        ) : <EmptyState message={translate(language, "weeklyProposalEmpty")} />}
+      </SectionCard>
+
+      <SectionCard title={translate(language, "noteExtractionTitle")}>
+        <div className="stack-form">
+          <input className="app-input" value={noteTitle} onChange={(event) => setNoteTitle(event.target.value)} placeholder={translate(language, "noteSourceTitle")} />
+          <input className="app-input" value={noteRef} onChange={(event) => setNoteRef(event.target.value)} placeholder={translate(language, "noteSourceRef")} />
+          <textarea className="app-input" value={noteContent} onChange={(event) => setNoteContent(event.target.value)} placeholder={translate(language, "noteContent")} />
+          <button className="app-button app-button--primary" type="button" onClick={previewNoteExtraction}>{translate(language, "previewExtraction")}</button>
+        </div>
+        {extraction ? (
+          <>
+            <p><strong>{translate(language, "statusLabel")}:</strong> {extraction.status}</p>
+            <ul className="stack-list">
+              {extraction.candidate_tasks.map((candidate, idx) => (
+                <li key={`${candidate.title}-${idx}`}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={selectedCandidateIdx.includes(idx)}
+                      onChange={(event) => setSelectedCandidateIdx((prev) => event.target.checked ? [...prev, idx] : prev.filter((value) => value !== idx))}
+                    />
+                    {` ${candidate.title}`}
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <div className="button-row">
+              <button className="app-button app-button--primary" type="button" onClick={() => submitExtractionDecision("accept")}>{translate(language, "acceptSelected")}</button>
+              <button className="app-button" type="button" onClick={() => submitExtractionDecision("dismiss")}>{translate(language, "dismissExtraction")}</button>
+            </div>
+          </>
+        ) : <EmptyState message={translate(language, "noteExtractionEmpty")} />}
       </SectionCard>
       {error ? <p className="error-text">{error}</p> : null}
     </section>

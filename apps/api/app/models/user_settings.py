@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -26,6 +26,16 @@ class UserSettings(Base):
     ai_auto_generate_weekly: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ai_require_manual_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     ai_preferred_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    app_timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    weekly_planning_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    weekly_planning_day_of_week: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    weekly_planning_time_local: Mapped[str] = mapped_column(String(5), nullable=False, default="20:00")
+    notes_scan_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notes_scan_frequency: Mapped[str] = mapped_column(String(16), nullable=False, default="weekly")
+    notes_scan_day_of_week: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes_scan_time_local: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    reminder_scan_interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    automation_pause_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ui_language: Mapped[str] = mapped_column(String(8), nullable=False, default="en")
     session_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 

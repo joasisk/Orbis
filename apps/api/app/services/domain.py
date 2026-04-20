@@ -411,10 +411,11 @@ class DomainService:
                 .order_by(EntityVersion.created_at.desc())
             ).all()
         )
-        owner_ids = {
-            user.id for user in db.scalars(select(User).where(User.id.in_([row.owner_user_id for row in rows]), User.role == "owner")).all()
-        }
-        return [row for row in rows if actor.id == row.owner_user_id or (actor.role == "spouse" and row.owner_user_id in owner_ids)]
+        if actor.role == "spouse":
+            if actor.linked_owner_user_id is None:
+                return []
+            return [row for row in rows if row.owner_user_id == actor.linked_owner_user_id]
+        return [row for row in rows if actor.id == row.owner_user_id]
 
     @staticmethod
     def _would_create_dependency_cycle(db: Session, task_id: str, depends_on_task_id: str) -> bool:

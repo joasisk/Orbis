@@ -97,6 +97,7 @@ class AuthService:
             email=normalized_email,
             hashed_password=AuthService.hash_password(password),
             role=UserRole.SPOUSE.value,
+            linked_owner_user_id=actor_user.id,
             is_active=True,
         )
         db.add(spouse_user)

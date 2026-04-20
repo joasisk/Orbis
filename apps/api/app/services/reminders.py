@@ -129,7 +129,9 @@ class ReminderService:
                 ReminderEvent.response_delay_seconds.is_not(None),
             )
         )
-        throttle_minutes = 90 if avg_delay_seconds is None else max(30, min(180, int(avg_delay_seconds // 60)))
+        adaptive_throttle = 90 if avg_delay_seconds is None else max(30, min(180, int(avg_delay_seconds // 60)))
+        configured_interval = max(5, min(240, settings.reminder_scan_interval_minutes))
+        throttle_minutes = max(configured_interval, adaptive_throttle)
 
         pending_items = list(
             db.scalars(

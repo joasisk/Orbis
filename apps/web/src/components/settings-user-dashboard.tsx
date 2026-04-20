@@ -12,6 +12,16 @@ type SettingsPayload = {
   ai_auto_generate_weekly: boolean;
   ai_require_manual_approval: boolean;
   ai_preferred_provider: string | null;
+  app_timezone: string;
+  weekly_planning_enabled: boolean;
+  weekly_planning_day_of_week: number;
+  weekly_planning_time_local: string;
+  notes_scan_enabled: boolean;
+  notes_scan_frequency: "daily" | "weekly";
+  notes_scan_day_of_week: number | null;
+  notes_scan_time_local: string | null;
+  reminder_scan_interval_minutes: number;
+  automation_pause_until: string | null;
   ui_language: UiLanguage;
 };
 
@@ -105,6 +115,29 @@ export function SettingsUserDashboard() {
             <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> {translate(language, "autoGenerateTrajectory")}</label>
             <label><input type="checkbox" checked={form.ai_require_manual_approval} onChange={(event) => setForm({ ...form, ai_require_manual_approval: event.target.checked })} /> {translate(language, "requireManualApproval")}</label>
             <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder={translate(language, "preferredProvider")} />
+          </SectionCard>
+
+          <SectionCard title={translate(language, "scheduleAutomationSettings")} tone="accent">
+            <label htmlFor="app-timezone">{translate(language, "appTimezone")}</label>
+            <input id="app-timezone" className="app-input" value={form.app_timezone} onChange={(event) => setForm({ ...form, app_timezone: event.target.value })} />
+            <label><input type="checkbox" checked={form.weekly_planning_enabled} onChange={(event) => setForm({ ...form, weekly_planning_enabled: event.target.checked })} /> {translate(language, "weeklyPlanningEnabled")}</label>
+            <label htmlFor="weekly-day">{translate(language, "weeklyPlanningDay")}</label>
+            <input id="weekly-day" className="app-input" type="number" min="0" max="6" value={form.weekly_planning_day_of_week} onChange={(event) => setForm({ ...form, weekly_planning_day_of_week: Number(event.target.value) })} />
+            <label htmlFor="weekly-time">{translate(language, "weeklyPlanningTime")}</label>
+            <input id="weekly-time" className="app-input" value={form.weekly_planning_time_local} onChange={(event) => setForm({ ...form, weekly_planning_time_local: event.target.value })} />
+            <label><input type="checkbox" checked={form.notes_scan_enabled} onChange={(event) => setForm({ ...form, notes_scan_enabled: event.target.checked })} /> {translate(language, "notesScanEnabled")}</label>
+            <select className="app-input" value={form.notes_scan_frequency} onChange={(event) => setForm({ ...form, notes_scan_frequency: event.target.value as "daily" | "weekly" })}>
+              <option value="daily">{translate(language, "cadenceDaily")}</option>
+              <option value="weekly">{translate(language, "cadenceWeekly")}</option>
+            </select>
+            <label htmlFor="notes-day">{translate(language, "notesScanDay")}</label>
+            <input id="notes-day" className="app-input" type="number" min="0" max="6" value={form.notes_scan_day_of_week ?? ""} onChange={(event) => setForm({ ...form, notes_scan_day_of_week: event.target.value === "" ? null : Number(event.target.value) })} />
+            <label htmlFor="notes-time">{translate(language, "notesScanTime")}</label>
+            <input id="notes-time" className="app-input" value={form.notes_scan_time_local ?? ""} onChange={(event) => setForm({ ...form, notes_scan_time_local: event.target.value || null })} />
+            <label htmlFor="scan-interval">{translate(language, "reminderScanInterval")}</label>
+            <input id="scan-interval" className="app-input" type="number" min="5" max="240" value={form.reminder_scan_interval_minutes} onChange={(event) => setForm({ ...form, reminder_scan_interval_minutes: Number(event.target.value) })} />
+            <label htmlFor="pause-until">{translate(language, "automationPauseUntil")}</label>
+            <input id="pause-until" className="app-input" type="datetime-local" value={form.automation_pause_until ? form.automation_pause_until.slice(0, 16) : ""} onChange={(event) => setForm({ ...form, automation_pause_until: event.target.value ? new Date(event.target.value).toISOString() : null })} />
           </SectionCard>
 
           <SectionCard title={translate(language, "settingsTitle")}>

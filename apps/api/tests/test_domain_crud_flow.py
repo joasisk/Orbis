@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 
-def _client_with_test_db() -> Generator[TestClient, None, None]:
+def _client_with_test_db() -> Generator[tuple[TestClient, sessionmaker], None, None]:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -40,7 +40,7 @@ def _client_with_test_db() -> Generator[TestClient, None, None]:
     app_main.check_db_connection = lambda: None
 
     with TestClient(app) as client:
-        yield client
+        yield client, test_session_local
 
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
@@ -82,7 +82,7 @@ def _create_and_login_spouse(client: TestClient, owner_token: str) -> str:
 
 def test_domain_crud_and_history_flow() -> None:
     client_gen = _client_with_test_db()
-    client = next(client_gen)
+    client, _ = next(client_gen)
     try:
         token = _bootstrap_and_token(client)
         headers = _headers(token)
@@ -173,7 +173,7 @@ def test_domain_crud_and_history_flow() -> None:
 
 def test_domain_write_authorization_cycle_and_recurring_detail() -> None:
     client_gen = _client_with_test_db()
-    client = next(client_gen)
+    client, _ = next(client_gen)
     try:
         owner_token = _bootstrap_and_token(client)
         spouse_token = _create_and_login_spouse(client, owner_token)
@@ -303,6 +303,63 @@ def test_domain_write_authorization_cycle_and_recurring_detail() -> None:
             json={"title": "Not allowed"},
         )
         assert spouse_update_recurring_resp.status_code == 403
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_history_for_spouse_is_scoped_to_linked_owner_only() -> None:
+    client_gen = _client_with_test_db()
+    client, session_local = next(client_gen)
+    try:
+        owner_token = _bootstrap_and_token(client)
+        spouse_token = _create_and_login_spouse(client, owner_token)
+        owner_headers = _headers(owner_token)
+        spouse_headers = _headers(spouse_token)
+
+        area_resp = client.post(
+            "/api/v1/areas",
+            headers=owner_headers,
+            json={"name": "House", "description": "Household"},
+        )
+        assert area_resp.status_code == 201
+        area_id = area_resp.json()["id"]
+
+        project_resp = client.post(
+            "/api/v1/projects",
+            headers=owner_headers,
+            json={"area_id": area_id, "name": "Visible", "is_private": False, "visibility_scope": "shared"},
+        )
+        assert project_resp.status_code == 201
+
+        task_resp = client.post(
+            "/api/v1/tasks",
+            headers=owner_headers,
+            json={"project_id": project_resp.json()["id"], "title": "Shared task", "is_private": False, "visibility_scope": "shared"},
+        )
+        assert task_resp.status_code == 201
+        task_id = task_resp.json()["id"]
+
+        with session_local() as db:
+            db.add(
+                EntityVersion(
+                    owner_user_id="unlinked-owner-id",
+                    entity_type="task",
+                    entity_id=task_id,
+                    actor_user_id="unlinked-owner-id",
+                    event_type="update",
+                    changed_fields={"status": {"from": "todo", "to": "done"}},
+                )
+            )
+            db.commit()
+
+        history_resp = client.get(f"/api/v1/history/task/{task_id}", headers=spouse_headers)
+        assert history_resp.status_code == 200
+        event_types = [row["event_type"] for row in history_resp.json()]
+        assert "create" in event_types
+        assert "update" not in event_types
     finally:
         try:
             next(client_gen)

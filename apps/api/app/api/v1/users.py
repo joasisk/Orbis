@@ -31,7 +31,11 @@ def spouse_status(
     current_user: User = Depends(require_roles("owner")),
     db: Session = Depends(get_db),
 ) -> SpouseStatusResponse:
-    spouse_user = db.scalar(select(User).where(User.role == UserRole.SPOUSE.value).order_by(User.created_at.desc()))
+    spouse_user = db.scalar(
+        select(User)
+        .where(User.role == UserRole.SPOUSE.value, User.linked_owner_user_id == current_user.id)
+        .order_by(User.created_at.desc())
+    )
     if spouse_user is None:
         return SpouseStatusResponse(spouse=None)
     return SpouseStatusResponse(spouse=UserMeResponse.model_validate(spouse_user, from_attributes=True))
