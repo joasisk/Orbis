@@ -85,7 +85,7 @@ export function SettingsUserDashboard() {
 
       {!form ? <EmptyState message={translate(language, "loadSettingsEmpty")} /> : (
         <div className="two-col">
-          <SectionCard title={translate(language, "languageSettings")}>
+          <SectionCard title={translate(language, "languageSettings")} className="settings-form-card">
             <label htmlFor="ui-language">{translate(language, "languageLabel")}</label>
             <select
               id="ui-language"
@@ -102,7 +102,7 @@ export function SettingsUserDashboard() {
             </select>
           </SectionCard>
 
-          <SectionCard title={translate(language, "notificationSettings")}>
+          <SectionCard title={translate(language, "notificationSettings")} className="settings-form-card">
             <label><input type="checkbox" checked={form.reminder_enabled} onChange={(event) => setForm({ ...form, reminder_enabled: event.target.checked })} /> {translate(language, "reminderEnabled")}</label>
             <label htmlFor="reminder-start">{translate(language, "reminderWindowStart")}</label>
             <input id="reminder-start" className="app-input" value={form.reminder_window_start} onChange={(event) => setForm({ ...form, reminder_window_start: event.target.value })} />
@@ -110,14 +110,14 @@ export function SettingsUserDashboard() {
             <input id="reminder-end" className="app-input" value={form.reminder_window_end} onChange={(event) => setForm({ ...form, reminder_window_end: event.target.value })} />
           </SectionCard>
 
-          <SectionCard title={translate(language, "aiPlanningSettings")} tone="accent">
+          <SectionCard title={translate(language, "aiPlanningSettings")} tone="accent" className="settings-form-card">
             <label><input type="checkbox" checked={form.ai_planning_enabled} onChange={(event) => setForm({ ...form, ai_planning_enabled: event.target.checked })} /> {translate(language, "aiPlanningEnabled")}</label>
             <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> {translate(language, "autoGenerateTrajectory")}</label>
             <label><input type="checkbox" checked={form.ai_require_manual_approval} onChange={(event) => setForm({ ...form, ai_require_manual_approval: event.target.checked })} /> {translate(language, "requireManualApproval")}</label>
             <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder={translate(language, "preferredProvider")} />
           </SectionCard>
 
-          <SectionCard title={translate(language, "scheduleAutomationSettings")} tone="accent">
+          <SectionCard title={translate(language, "scheduleAutomationSettings")} tone="accent" className="settings-form-card">
             <label htmlFor="app-timezone">{translate(language, "appTimezone")}</label>
             <input id="app-timezone" className="app-input" value={form.app_timezone} onChange={(event) => setForm({ ...form, app_timezone: event.target.value })} />
             <label><input type="checkbox" checked={form.weekly_planning_enabled} onChange={(event) => setForm({ ...form, weekly_planning_enabled: event.target.checked })} /> {translate(language, "weeklyPlanningEnabled")}</label>

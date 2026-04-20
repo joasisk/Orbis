@@ -136,7 +136,7 @@ export function SettingsAppDashboard() {
 
       {!form ? <EmptyState message={translate(language, "loadSettingsEmpty")} /> : (
         <div className="two-col">
-          <SectionCard title={translate(language, "integrationsSettings")}>
+          <SectionCard title={translate(language, "integrationsSettings")} className="settings-form-card">
             <label>
               <input type="checkbox" checked={form.calendar_connected} onChange={(event) => setForm({ ...form, calendar_connected: event.target.checked })} />
               {` ${translate(language, "calendarIntegration")} — ${translate(language, "connectedLabel")}`}
@@ -150,7 +150,7 @@ export function SettingsAppDashboard() {
             <button className="app-button app-button--primary" type="button" onClick={saveSettings}>{translate(language, "saveSettings")}</button>
           </SectionCard>
 
-          <SectionCard title={translate(language, "auditSettings")} tone="accent">
+          <SectionCard title={translate(language, "auditSettings")} tone="accent" className="settings-form-card">
             <label>
               <input type="checkbox" checked={authOnly} onChange={(event) => setAuthOnly(event.target.checked)} /> {translate(language, "auditOnlyAuthEvents")}
             </label>
@@ -172,7 +172,7 @@ export function SettingsAppDashboard() {
           </SectionCard>
 
           {role === "owner" ? (
-            <SectionCard title={translate(language, "spouseManagement")}>
+            <SectionCard title={translate(language, "spouseManagement")} className="settings-form-card">
               {spouseStatus?.spouse ? (
                 <p>{translate(language, "linkedSpouse")}: {spouseStatus.spouse.email}</p>
               ) : (
