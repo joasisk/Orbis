@@ -40,6 +40,12 @@ export function SpouseDashboard() {
   const [dashboard, setDashboard] = useState<SpouseDashboardPayload | null>(null);
   const [error, setError] = useState("");
   const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
+  const [influenceDrafts, setInfluenceDrafts] = useState<Record<string, {
+    spouse_priority: string;
+    spouse_urgency: string;
+    spouse_deadline: string;
+    spouse_deadline_type: "soft" | "hard" | "";
+  }>>({});
 
   useEffect(() => {
     const localToken = window.localStorage.getItem("orbis_access_token") ?? "";
@@ -71,12 +77,42 @@ export function SpouseDashboard() {
 
   const visibleItems = useMemo(() => dashboard?.days.flatMap((day) => day.visible_items) ?? [], [dashboard]);
 
-  async function updateInfluence(item: SpouseDashboardItem, field: "spouse_priority" | "spouse_urgency", value: string) {
+  useEffect(() => {
+    const nextDrafts: Record<string, {
+      spouse_priority: string;
+      spouse_urgency: string;
+      spouse_deadline: string;
+      spouse_deadline_type: "soft" | "hard" | "";
+    }> = {};
+    for (const item of visibleItems) {
+      nextDrafts[item.id] = {
+        spouse_priority: item.spouse_priority?.toString() ?? "",
+        spouse_urgency: item.spouse_urgency?.toString() ?? "",
+        spouse_deadline: item.spouse_deadline ? item.spouse_deadline.slice(0, 16) : "",
+        spouse_deadline_type: item.spouse_deadline_type ?? "",
+      };
+    }
+    setInfluenceDrafts(nextDrafts);
+  }, [visibleItems]);
+
+  async function saveInfluence(item: SpouseDashboardItem) {
     if (!token) return;
+    const draft = influenceDrafts[item.id];
+    if (!draft) return;
 
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed < 0 || parsed > 10) return;
+    const spousePriority = draft.spouse_priority.trim() === "" ? null : Number(draft.spouse_priority);
+    if (spousePriority !== null && (Number.isNaN(spousePriority) || spousePriority < 0 || spousePriority > 10)) {
+      setError("Could not update influence.");
+      return;
+    }
 
+    const spouseUrgency = draft.spouse_urgency.trim() === "" ? null : Number(draft.spouse_urgency);
+    if (spouseUrgency !== null && (Number.isNaN(spouseUrgency) || spouseUrgency < 0 || spouseUrgency > 10)) {
+      setError("Could not update influence.");
+      return;
+    }
+
+    setError("");
     setSavingTaskId(item.id);
     const response = await fetch(`${apiBase}/tasks/${item.task_id}/spouse-influence`, {
       method: "PATCH",
@@ -84,7 +120,12 @@ export function SpouseDashboard() {
         "Content-Type": "application/json",
         ...authHeaders(token),
       },
-      body: JSON.stringify({ [field]: parsed }),
+      body: JSON.stringify({
+        spouse_priority: spousePriority,
+        spouse_urgency: spouseUrgency,
+        spouse_deadline: draft.spouse_deadline ? new Date(draft.spouse_deadline).toISOString() : null,
+        spouse_deadline_type: draft.spouse_deadline_type || null,
+      }),
     });
     setSavingTaskId(null);
 
@@ -141,17 +182,33 @@ export function SpouseDashboard() {
                     type="number"
                     min={0}
                     max={10}
-                    defaultValue={item.spouse_priority ?? ""}
-                    onBlur={(event) => updateInfluence(item, "spouse_priority", event.target.value)}
+                    value={influenceDrafts[item.id]?.spouse_priority ?? ""}
+                    onChange={(event) => setInfluenceDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], spouse_priority: event.target.value } }))}
                   />
                   <input
                     className="app-input app-input--short"
                     type="number"
                     min={0}
                     max={10}
-                    defaultValue={item.spouse_urgency ?? ""}
-                    onBlur={(event) => updateInfluence(item, "spouse_urgency", event.target.value)}
+                    value={influenceDrafts[item.id]?.spouse_urgency ?? ""}
+                    onChange={(event) => setInfluenceDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], spouse_urgency: event.target.value } }))}
                   />
+                  <input
+                    className="app-input"
+                    type="datetime-local"
+                    value={influenceDrafts[item.id]?.spouse_deadline ?? ""}
+                    onChange={(event) => setInfluenceDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], spouse_deadline: event.target.value } }))}
+                  />
+                  <select
+                    className="app-input app-input--short"
+                    value={influenceDrafts[item.id]?.spouse_deadline_type ?? ""}
+                    onChange={(event) => setInfluenceDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], spouse_deadline_type: event.target.value as "soft" | "hard" | "" } }))}
+                  >
+                    <option value="">-</option>
+                    <option value="soft">soft</option>
+                    <option value="hard">hard</option>
+                  </select>
+                  <button className="app-button" type="button" onClick={() => saveInfluence(item)}>✓</button>
                   <StatusPill label={item.outcome_status} />
                 </div>
               </li>

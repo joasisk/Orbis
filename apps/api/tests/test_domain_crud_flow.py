@@ -254,6 +254,19 @@ def test_domain_write_authorization_cycle_and_recurring_detail() -> None:
         assert spouse_influence_resp.status_code == 200
         assert spouse_influence_resp.json()["spouse_priority"] == 9
         assert spouse_influence_resp.json()["priority"] is None
+        assert spouse_influence_resp.json()["spouse_deadline_type"] == "hard"
+
+        spouse_influence_clear_resp = client.patch(
+            f"/api/v1/tasks/{task_b_id}/spouse-influence",
+            headers=spouse_headers,
+            json={
+                "spouse_deadline": None,
+                "spouse_deadline_type": None,
+            },
+        )
+        assert spouse_influence_clear_resp.status_code == 200
+        assert spouse_influence_clear_resp.json()["spouse_deadline"] is None
+        assert spouse_influence_clear_resp.json()["spouse_deadline_type"] is None
 
         owner_spouse_influence_resp = client.patch(
             f"/api/v1/tasks/{task_b_id}/spouse-influence",
