@@ -2,6 +2,7 @@
   --surface: #fdf9f2;
   --surface-container: #f1ede7;
   --surface-low: #f7f3ed;
+  --surface-bright: #fbf7f1;
   --surface-lowest: #ffffff;
   --primary: #263328;
   --primary-container: #3c4a3e;
@@ -15,19 +16,21 @@
   --secondary-button-bg: #e5d5c0;
   --canvas-gradient: radial-gradient(circle at 20% 0%, #f8f0df 0%, var(--surface) 45%, #efe9df 100%);
   --menu-surface: rgba(253, 249, 242, 0.82);
+  --outline-ghost: color-mix(in srgb, var(--muted) 15%, transparent);
 }
 
 :root[data-theme="dark"] {
   --surface: #0f1410;
   --surface-container: #161c16;
   --surface-low: #1e2620;
+  --surface-bright: #263129;
   --surface-lowest: #273229;
   --primary: #d7e3d5;
   --primary-container: #a5bc9d;
   --secondary: #f0a88f;
   --text: #edf4ea;
   --muted: #b8c4b4;
-  --ambient-shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
+  --ambient-shadow: 0 18px 50px rgba(237, 244, 234, 0.06);
   --status-pill-bg: #35503e;
   --secondary-button-bg: #3d5141;
   --canvas-gradient: radial-gradient(circle at 20% 0%, #1c231d 0%, var(--surface) 45%, #0f1410 100%);
@@ -79,9 +82,10 @@ a { color: inherit; text-decoration: none; }
 
 .sidebar-link {
   padding: 0.8rem 1rem;
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   background: transparent;
   font-weight: 600;
+  transition: background-color 140ms ease;
 }
 
 .sidebar-link.is-active { background: var(--surface-lowest); box-shadow: var(--ambient-shadow); }
@@ -120,7 +124,7 @@ a { color: inherit; text-decoration: none; }
   width: 12rem;
   background: var(--menu-surface);
   backdrop-filter: blur(20px);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: var(--ambient-shadow);
   padding: 0.6rem;
   display: grid;
@@ -132,7 +136,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--surface-lowest);
   text-align: left;
   padding: 0.6rem 0.75rem;
-  border-radius: 0.7rem;
+  border-radius: var(--radius-xl);
 }
 
 .content-region {
@@ -169,6 +173,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--surface-low);
   border-radius: var(--radius-xl);
   padding: 1rem 1.15rem;
+  transition: background-color 160ms ease;
 }
 
 .section-card--accent { background: var(--surface-lowest); box-shadow: var(--ambient-shadow); }
@@ -177,16 +182,17 @@ a { color: inherit; text-decoration: none; }
 
 .two-col { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-.stack-list, .stack-form { display: grid; gap: 0.6rem; padding: 0; margin: 0; list-style: none; }
+.stack-list, .stack-form { display: grid; gap: 0.85rem; padding: 0; margin: 0; list-style: none; }
 
 .task-row {
   background: var(--surface-lowest);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   padding: 0.7rem 0.85rem;
   display: flex;
   justify-content: space-between;
   gap: 0.6rem;
   align-items: center;
+  transition: background-color 160ms ease;
 }
 
 .status-pill {
@@ -199,10 +205,28 @@ a { color: inherit; text-decoration: none; }
 
 .app-input {
   border: 0;
-  border-radius: 0.8rem;
-  background: var(--surface-lowest);
-  padding: 0.6rem 0.7rem;
+  border-bottom: 2px solid color-mix(in srgb, var(--muted) 24%, transparent);
+  border-radius: 1rem 1rem 0.5rem 0.5rem;
+  background: var(--surface-container);
+  padding: 0.7rem 0.8rem 0.55rem;
   min-width: 11rem;
+  line-height: 1.65;
+  transition: border-bottom-color 140ms ease, background-color 140ms ease;
+}
+
+.app-input::placeholder {
+  color: color-mix(in srgb, var(--muted) 68%, transparent);
+}
+
+.app-input:hover {
+  background: color-mix(in srgb, var(--surface-low) 92%, white);
+}
+
+.app-input:focus,
+.app-input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--primary);
+  background: var(--surface-low);
 }
 
 .app-input--short { min-width: 8rem; }
@@ -213,11 +237,21 @@ a { color: inherit; text-decoration: none; }
   background: var(--surface-lowest);
   padding: 0.62rem 0.95rem;
   font-weight: 600;
+  transition: transform 120ms ease, background 160ms ease;
+  transform-origin: center;
 }
 
 .app-button--primary {
   background: linear-gradient(135deg, var(--primary), var(--primary-container));
   color: #f6f6ef;
+}
+
+.app-button--primary:hover {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 88%, black), color-mix(in srgb, var(--primary-container) 92%, black));
+}
+
+.app-button:active {
+  transform: scale(0.98);
 }
 
 .app-button--secondary { background: var(--secondary-button-bg); }
@@ -228,10 +262,11 @@ a { color: inherit; text-decoration: none; }
   border: 0;
   text-align: left;
   background: var(--surface-lowest);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   padding: 0.75rem;
   display: grid;
   gap: 0.3rem;
+  transition: background-color 160ms ease;
 }
 
 .empty-state, .footnote { color: var(--muted); }
@@ -257,13 +292,13 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--radius-xl);
   padding: 1.3rem;
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .password-input-row {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.75rem;
 }
 
 .password-input-row .app-input {
@@ -290,13 +325,14 @@ a { color: inherit; text-decoration: none; }
 .inline-actions {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.7rem;
   flex-wrap: wrap;
-  margin-bottom: 0.7rem;
+  margin-bottom: 1rem;
 }
 
 .task-row--selected {
-  outline: 2px solid #c9b48f;
+  outline: 2px solid var(--outline-ghost);
+  outline-offset: 1px;
 }
 
 .text-button {
@@ -311,7 +347,7 @@ a { color: inherit; text-decoration: none; }
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-  gap: 0.6rem;
+  gap: 0.85rem;
 }
 
 .modal-backdrop {
@@ -329,8 +365,14 @@ a { color: inherit; text-decoration: none; }
   max-height: calc(100vh - 2rem);
   overflow: auto;
   background: var(--surface-lowest);
-  border-radius: 1.2rem;
+  border-radius: var(--radius-xl);
   padding: 1rem;
+}
+
+.section-card:hover,
+.task-row:hover,
+.day-card:hover {
+  background: var(--surface-bright);
 }
 
 .modal-shell h2 {
@@ -352,5 +394,5 @@ a { color: inherit; text-decoration: none; }
 .app-check {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.7rem;
 }
