@@ -31,6 +31,10 @@ class UserSettingsService:
 
         if settings.ai_auto_generate_weekly and not settings.ai_require_manual_approval:
             raise HTTPException(status_code=422, detail="Approval-first guardrail cannot be disabled")
+        if settings.notes_scan_enabled and settings.notes_scan_frequency == "weekly" and settings.notes_scan_day_of_week is None:
+            raise HTTPException(status_code=422, detail="notes_scan_day_of_week is required for weekly notes scan")
+        if settings.notes_scan_frequency == "daily":
+            settings.notes_scan_day_of_week = None
 
         db.add(settings)
         db.commit()

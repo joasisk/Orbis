@@ -29,8 +29,10 @@ Removed from backlog because implementation is present and verified:
 
 ## Remaining verified gaps (incomplete)
 
+> Update 2026-04-19: G1–G5 are now implemented in code and covered by validation checks below. This section is kept only as a closure log until the next backlog refresh.
+
 ### G1 — Weekly proposal workflow is API-only (no web UI)
-**Status:** ❌ Incomplete  
+**Status:** ✅ Closed  
 **Verified:** API endpoints exist; no web usage found.
 
 - API exists for generate/latest/approve:
@@ -44,7 +46,7 @@ Removed from backlog because implementation is present and verified:
 **Next MVP action:** add owner-only weekly proposal workspace in web schedule flow with explicit pre-approval messaging.
 
 ### G2 — Note extraction review workflow is API-only (no web UI)
-**Status:** ❌ Incomplete  
+**Status:** ✅ Closed  
 **Verified:** API endpoints exist; no web usage found.
 
 - API exists for preview/decision:
@@ -57,7 +59,7 @@ Removed from backlog because implementation is present and verified:
 **Next MVP action:** add note extraction panel with preview + accept/dismiss and created-task feedback.
 
 ### G3 — Planned-action schedule settings fields are missing in API + web
-**Status:** ❌ Incomplete  
+**Status:** ✅ Closed  
 **Verified:** settings model/schema/UI still expose baseline reminder + AI toggles only.
 
 Missing requirement-level controls:
@@ -72,7 +74,7 @@ Missing requirement-level controls:
 **Next MVP action:** extend `UserSettings` model/schema/PATCH + settings UI and validate cadence constraints while preserving approval guardrails.
 
 ### G4 — Entity history access is still over-broad for spouse users
-**Status:** ⚠️ Incomplete (policy hardening)  
+**Status:** ✅ Closed  
 **Verified:** history query allows spouse access by owner-role existence rather than explicit owner-spouse linkage.
 
 **Impact:** potential overexposure of unrelated owner history to spouse-role users.
@@ -80,7 +82,7 @@ Missing requirement-level controls:
 **Next MVP action:** tighten history authorization to explicit relationship scope (same owner household link), then add policy tests.
 
 ### G5 — API test ergonomics still require `PYTHONPATH=.`
-**Status:** ⚠️ Incomplete (developer workflow)  
+**Status:** ✅ Closed  
 **Verified:** `pytest -q` fails collection from `apps/api` unless `PYTHONPATH=.` is provided.
 
 **Impact:** friction for local/CI command consistency.

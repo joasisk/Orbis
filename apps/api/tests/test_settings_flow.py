@@ -79,6 +79,15 @@ def test_owner_can_get_and_patch_settings() -> None:
                 "notes_provider": "mock-notes",
                 "ai_auto_generate_weekly": True,
                 "ai_require_manual_approval": True,
+                "app_timezone": "America/New_York",
+                "weekly_planning_enabled": True,
+                "weekly_planning_day_of_week": 0,
+                "weekly_planning_time_local": "20:00",
+                "notes_scan_enabled": True,
+                "notes_scan_frequency": "weekly",
+                "notes_scan_day_of_week": 1,
+                "notes_scan_time_local": "07:30",
+                "reminder_scan_interval_minutes": 45,
                 "ui_language": "sk",
             },
         )
@@ -89,6 +98,11 @@ def test_owner_can_get_and_patch_settings() -> None:
         assert payload["calendar_provider"] == "mock-calendar"
         assert payload["ai_auto_generate_weekly"] is True
         assert payload["ai_require_manual_approval"] is True
+        assert payload["app_timezone"] == "America/New_York"
+        assert payload["notes_scan_enabled"] is True
+        assert payload["notes_scan_frequency"] == "weekly"
+        assert payload["notes_scan_day_of_week"] == 1
+        assert payload["reminder_scan_interval_minutes"] == 45
         assert payload["ui_language"] == "sk"
     finally:
         try:
@@ -195,6 +209,31 @@ def test_guardrail_rejects_disabling_manual_approval_when_auto_generation_on() -
             json={"ai_auto_generate_weekly": True, "ai_require_manual_approval": False},
         )
         assert invalid_resp.status_code == 422
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_rejects_invalid_timezone_and_weekly_notes_without_day() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+
+    try:
+        _bootstrap_owner(client)
+        owner_tokens = _login(client, "owner@example.com", "Password123!")
+        headers = _auth_headers(owner_tokens["access_token"])
+
+        timezone_resp = client.patch("/api/v1/settings/me", headers=headers, json={"app_timezone": "Mars/Olympus"})
+        assert timezone_resp.status_code == 422
+
+        notes_resp = client.patch(
+            "/api/v1/settings/me",
+            headers=headers,
+            json={"notes_scan_enabled": True, "notes_scan_frequency": "weekly"},
+        )
+        assert notes_resp.status_code == 422
     finally:
         try:
             next(client_gen)
