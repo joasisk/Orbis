@@ -183,6 +183,7 @@ Goal: expand integrations and platform reach beyond MVP without changing MVP gua
 
 Deliverables (incremental):
 - public SDK baseline (API-key based) for external tooling automation
+- Obsidian integration expansion: multi-vault connections with area/project routing rules (while preserving approval-first extraction flow)
 - evaluate GraphQL facade feasibility against existing REST contracts
 - mobile app with Expo
 - iOS widgets and notifications
