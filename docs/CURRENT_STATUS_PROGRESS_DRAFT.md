@@ -1,8 +1,8 @@
-# Current Status and Progress Draft (Documentation-Aligned)
+# Current Status Snapshot (MVP Readiness)
 
-Assessment date: **2026-04-16**.
+Assessment date: **2026-04-20**.
 
-This draft evaluates implementation status against the canonical documentation order:
+This snapshot is aligned to:
 1. `docs/REQUIREMENTS.md`
 2. `docs/MVP_PLAN.md`
 3. `docs/IMPLEMENTATION_PLAN.md`
@@ -12,150 +12,79 @@ This draft evaluates implementation status against the canonical documentation o
 
 ## Executive summary
 
-The repository appears to be **through Phase 4 backend baseline** with **Phase 3+4 web integration partially complete**.
+The project is **close to MVP completion**.
 
-- **Backend:** Strong progress through Phases 1–4 with passing lint/tests and coverage for auth, phase-2 CRUD/history, phase-3 daily plan/focus flows, and phase-4 weekly proposal + note extraction workflows.
-- **Frontend:** Phase 2 CRUD pages exist and a Phase 3 UI component exists, but the default homepage is currently a static design shell and does not mount that Phase 3 workflow by default.
-- **MVP risk:** Core MVP workflows are mostly implemented at API level; biggest remaining delivery risk is cohesive day-to-day UX wiring (especially making “do-now -> focus actions -> blocker/energy capture” a first-class user path).
+- Core API and web workflows for task management, weekly planning, focus execution, calendar integration, and notes extraction are implemented.
+- Automated checks currently pass for API and web static quality gates.
+- Remaining work is concentrated in **final UX parity** (spouse deadline input path, settings cadence controls) and **deployment proof** (live TrueNAS verification).
 
 ---
 
-## Evidence snapshot (checks run)
+## Validation checks (this assessment)
 
-### API checks
-- `cd apps/api && ruff check app tests` -> pass.
-- `cd apps/api && PYTHONPATH=. pytest -q` -> pass (`13 passed`).
+### API
+- `cd apps/api && pytest -q` -> pass (`29 passed`).
 
-### Web checks
+### Web
 - `cd apps/web && npm run lint` -> pass.
 - `cd apps/web && npm run typecheck` -> pass.
 
 ---
 
-## Progress against implementation phases
+## Phase progress summary
 
 ## Phase 0 — Foundations
 **Status:** ✅ Complete
 
-- Monorepo structure, docs set, and ADRs are present.
-- Tooling and quality gates are functional (ruff, next lint, typecheck).
-- Architecture doc still aligns with API-first boundaries.
-
 ## Phase 1 — Core backend and auth
 **Status:** ✅ Complete
 
-- Auth flow coverage exists in tests (`test_phase1_auth_flow.py`).
-- Owner/spouse role model and protected flows are implemented and validated by tests.
-
-## Phase 2 — Project/task domain
-**Status:** ✅ Complete for baseline MVP scope
-
-- API surfaces areas/projects/tasks/recurring commitments/dependencies/history.
-- Prior known gaps (e.g., recurring commitment detail endpoint, dependency cycle validation) now appear implemented.
-- CRUD/history integration tests exist and pass.
-- Web includes project and task list/detail routes.
+## Phase 2 — Project and task domain
+**Status:** ✅ Complete
 
 ## Phase 3 — Scheduling and focus workflows
-**Status:** ⚠️ Backend complete; web exposure partially wired
-
-- Daily plan API exists and is tested.
-- Focus lifecycle endpoints (`start/stop/sidetrack/unable`) exist and are tested.
-- Blocker taxonomy and overload fields are present in phase-3 models/schemas/tests.
-- A `Phase3Home` web component exists and calls these endpoints.
-- **Gap:** root homepage currently renders a static shell and does not mount `Phase3Home`, so the primary route does not expose this behavior by default.
+**Status:** ✅ Complete
 
 ## Phase 4 — AI planning engine
-**Status:** ✅ Baseline implemented
+**Status:** ✅ Complete
 
-- Weekly proposal generate/get/approve endpoints are present.
-- Note extraction preview/decision endpoints are present.
-- API tests validate weekly proposal and note extraction accept flow.
-- Approval gate behavior is represented in API surface (proposal then approve).
+## Phase 4.1 — Schedule/performance model extension
+**Status:** ✅ Complete
 
-## Phase 5 — Calendar and reminders
-**Status:** ✅ Delivered in API/worker baseline
+## Phase 4.5 — Web catch-up + settings UX
+**Status:** ⚠️ Mostly complete
 
-- Calendar integration endpoints support importing external events and exporting accepted daily schedule items as soft blocks (proposed schedules are blocked from export).
-- Reminder worker scan path creates adaptive reminder events within owner-configured windows and records delivery/response audit events tied to schedule/day-item identifiers.
-- Planner telemetry snapshot consumes reminder response metrics for future scheduling feedback loops.
+- Home and schedule are API-backed.
+- Weekly proposal and note extraction are UI-wired.
+- Remaining: expose full planned-action cadence controls in settings UI.
 
-## Phase 6 — Wife visibility and influence UX
-**Status:** ⚠️ Data model support present; dedicated spouse UX maturity unclear
+## Phase 5 — Calendar and reminder integration
+**Status:** ✅ Complete (MVP baseline)
 
-- Spouse influence fields exist in phase-2 data model.
-- A dedicated spouse-facing dashboard/experience is not yet confirmed in this assessment.
+## Phase 6 — Wife visibility and influence experience
+**Status:** ⚠️ Mostly complete
+
+- Spouse dashboard and influence updates are in place.
+- Remaining: spouse dashboard quick-edit parity for spouse deadline inputs.
 
 ## Phase 7 — Hardening and TrueNAS packaging
-**Status:** ⚠️ Substantially validated (environment-limited)
+**Status:** ⚠️ Mostly complete
 
-- Core local stack and architecture are in place.
-- Re-validated in this pass:
-  - API hardening checks for rate limiting and API key flow (`apps/api/tests/test_phase7_hardening.py`).
-  - Backup/restore script behavior via repeatable script-harness execution.
-  - Compose-level TrueNAS prerequisites (required services + persistent volumes).
-- Remaining environment-specific proof:
-  - TrueNAS app UI log visibility and post-deploy health checks still require a live TrueNAS SCALE deployment run.
+- Rate limiting, API key flow, and backup/restore checks exist.
+- Remaining: final live-environment TrueNAS proof run documentation.
 
 ---
 
-## Progress against MVP capabilities (from `docs/MVP_PLAN.md`)
+## MVP-close checklist (recommended)
 
-- **Project/task tracking:** ✅ Implemented (API + web baseline pages).
-- **AI weekly planning:** ✅ Implemented at baseline workflow level (proposal + approval endpoints + tests).
-- **Reminders:** ✅ Implemented and verified in API/worker baseline.
-- **Focus mode:** ⚠️ Implemented in backend and component-level web UI, but not surfaced as default homepage experience.
-- **Wife visibility:** ⚠️ Partial evidence via data model/permissions; full UX still needs explicit verification.
-
----
-
-## Architecture alignment check (`docs/ARCHITECTURE.md`)
-
-- API-first split remains intact: domain logic is centered in `apps/api`, with web mostly consuming APIs.
-- No evidence in this assessment of boundary violations that move core orchestration into web handlers.
-- Current gap is not architecture mismatch; it is UX integration completeness.
-
----
-
-## Updated next-step plan (with intermediate catch-up phase)
-
-1. **Phase 4.5 (new) — Web catch-up + settings interface**
-   - Make `/` API-backed and remove static dead-end behavior.
-   - Fetch and render core domain data in default user flows:
-     - Areas of Life
-     - Projects
-     - Tasks
-   - Fetch and render scheduling context:
-     - daily plan (“what to do now”)
-     - weekly schedule/proposal context
-   - Make focus/task execution actions easy to access from the default route.
-   - Implement a settings interface for MVP operations:
-     - profile/session basics
-     - reminder preferences
-     - calendar and notes integration connection/config status
-     - AI planning controls that keep approval gates intact
-
-2. **Phase 5 — Calendar + reminder delivery completion**
-   - ✅ First calendar adapter read/write path is in place.
-   - ✅ Reminder worker delivery + response logging loop is in place.
-   - ✅ Accepted plan items can become soft calendar blocks.
-
-3. **Phase 6 — Spouse visibility UX completion**
-   - Add/verify spouse-facing dashboard flows for relevant schedule context.
-   - Validate private-item suppression in all spouse-visible views.
-   - Validate influence UX and weighting behavior without overriding owner data.
-
-4. **Phase 7 — Hardening and deployment proof**
-   - ✅ Add repeatable backup/restore verification.
-   - ✅ Add baseline operational/security checks (rate limiting, API key flow where applicable).
-   - ⚠️ Complete live TrueNAS deployment UI/log verification in target environment.
-
-5. **Tracking update**
-   - Add a concise MVP status matrix in docs with links to implemented endpoints/pages and explicit pending items.
+1. Add spouse dashboard quick-edit controls for `spouse_deadline` + `spouse_deadline_type`.
+2. Add settings UI controls for existing API-backed cadence/timezone fields.
+3. Execute and document one complete TrueNAS deploy verification pass.
 
 ---
 
 ## Delivery confidence
 
-- **High confidence:** phases 1–4 backend baseline capabilities exist and pass automated checks.
-- **Medium confidence:** end-user day-to-day workflow polish in web (especially focus-first entry experience).
-- **Lower confidence:** phase 6 spouse UX and final live-environment deployment verification, pending explicit completion evidence.
+- **High confidence:** backend MVP capabilities and quality gates.
+- **Medium-high confidence:** day-to-day owner UX.
+- **Medium confidence:** final spouse-flow parity and deployment handoff evidence.

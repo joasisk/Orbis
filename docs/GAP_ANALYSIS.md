@@ -1,105 +1,121 @@
-# Consolidated Gap Analysis (Single Source of Truth)
+# MVP Gap Analysis (Current)
 
-Date: 2026-04-19  
-Scope: Replaces legacy phase/UI gap-analysis files with one verified backlog.
-
-## Replaced documents
-- `docs/PHASE0_3_GAP_ANALYSIS.md`
-- `docs/PHASE1_GAP_ANALYSIS.md`
-- `docs/PHASE2_GAP_ANALYSIS.md`
-- `docs/PHASE3_GAP_ANALYSIS.md`
-- `docs/UI_API_GAP_ANALYSIS.md`
-- `docs/UI_API_GAP_IMPLEMENTATION_PLAN.md`
+Date: 2026-04-20  
+Scope: Gap analysis against `docs/REQUIREMENTS.md` + `docs/MVP_PLAN.md` with implementation evidence from API/web code and current automated checks.
 
 ## Verification method
-- Code-path verification in API and web routes/components.
-- Endpoint/search verification with repository grep.
-- API regression tests for auth/domain/focus/planning/settings flows.
-
-## What is no longer a gap (implemented and verified)
-Removed from backlog because implementation is present and verified:
-
-1. **Phase 1 auth baseline**: bootstrap/login/refresh/logout, spouse creation/status endpoints, role guards, and tests.
-2. **Phase 2 domain baseline**: Areas/Projects/Tasks/Recurring commitments CRUD, task dependency cycle detection, spouse influence endpoint, and history logging.
-3. **Phase 3 core focus loop**: daily plan endpoint + focus lifecycle endpoints (`start`, `stop`, `sidetrack`, `unable`) with blocker and energy capture.
-4. **Primary route API wiring in web**: home/schedule/projects/tasks/areas/settings routes load API-backed data.
-5. **Spouse management + spouse influence UI**: owner spouse create/status flow and spouse influence editing flows are present.
+- Reviewed MVP source-of-truth docs and implementation plan alignment.
+- Verified implemented surfaces in:
+  - `apps/api/app` + `apps/api/tests`
+  - `apps/web/src/app` + `apps/web/src/components`
+- Re-ran baseline checks:
+  - API: `pytest -q` (`29 passed`)
+  - Web: `npm run lint`, `npm run typecheck`
 
 ---
 
-## Remaining verified gaps (incomplete)
+## MVP capability status matrix
 
-> Update 2026-04-19: G1–G5 are now implemented in code and covered by validation checks below. This section is kept only as a closure log until the next backlog refresh.
+### 1) Project/task tracking
+**Status:** ✅ Implemented (MVP-ready baseline)
 
-### G1 — Weekly proposal workflow is API-only (no web UI)
-**Status:** ✅ Closed  
-**Verified:** API endpoints exist; no web usage found.
+- Areas/Projects/Tasks/Recurring commitments + history and influence fields are implemented in API and surfaced in web CRUD workflows.
+- Regression tests cover core domain flow and history scope behavior.
 
-- API exists for generate/latest/approve:
-  - `POST /planning/weekly-proposals/generate`
-  - `GET /planning/weekly-proposals/latest`
-  - `POST /planning/weekly-proposals/{proposal_id}/approve`
-- No matching calls/components found in `apps/web/src`.
+### 2) AI weekly planning with approval gate
+**Status:** ✅ Implemented (MVP-ready baseline)
 
-**Impact:** owner cannot complete proposal generation/review/approval workflow from UI.
+- Proposal generation/review/approval endpoints exist.
+- Weekly proposal controls are wired in web schedule dashboard.
+- Manual approval gate is preserved (no silent schedule commit path).
 
-**Next MVP action:** add owner-only weekly proposal workspace in web schedule flow with explicit pre-approval messaging.
+### 3) Focus mode + daily execution actions
+**Status:** ✅ Implemented (MVP-ready baseline)
 
-### G2 — Note extraction review workflow is API-only (no web UI)
-**Status:** ✅ Closed  
-**Verified:** API endpoints exist; no web usage found.
+- Daily plan endpoint and focus actions (`start`, `stop`, `sidetrack`, `unable`) are implemented and tested.
+- Home dashboard exposes “do now” + focus actions and day-item telemetry updates.
 
-- API exists for preview/decision:
-  - `POST /planning/note-extractions/preview`
-  - `POST /planning/note-extractions/{id}/decision`
-- No matching calls/components found in `apps/web/src`.
+### 4) Reminder model
+**Status:** ✅ Implemented (backend baseline)
 
-**Impact:** owner cannot run note-to-task candidate review/accept-dismiss workflow from UI.
+- Reminder/event models and services are implemented with response logging.
+- Reminder behavior is covered in planning/reminder tests.
 
-**Next MVP action:** add note extraction panel with preview + accept/dismiss and created-task feedback.
+### 5) Calendar integration (read + scheduled write)
+**Status:** ✅ Implemented (MVP baseline)
 
-### G3 — Planned-action schedule settings fields are missing in API + web
-**Status:** ✅ Closed  
-**Verified:** settings model/schema/UI still expose baseline reminder + AI toggles only.
+- Calendar adapter path exists.
+- Accepted schedule items can be exported as soft calendar blocks.
 
-Missing requirement-level controls:
-- app timezone for planned actions
-- weekly planning cadence
-- note-scan cadence
-- reminder scan interval
-- optional automation pause-until
+### 6) Notes ingestion path
+**Status:** ✅ Implemented (MVP baseline)
 
-**Impact:** owner cannot configure planned-action cadence from settings.
+- Note extraction preview + decision APIs exist.
+- Web schedule dashboard includes review/accept/dismiss workflow.
 
-**Next MVP action:** extend `UserSettings` model/schema/PATCH + settings UI and validate cadence constraints while preserving approval guardrails.
+### 7) Spouse visibility + influence
+**Status:** ⚠️ Mostly implemented; one UX gap remains
 
-### G4 — Entity history access is still over-broad for spouse users
-**Status:** ✅ Closed  
-**Verified:** history query allows spouse access by owner-role existence rather than explicit owner-spouse linkage.
+- Spouse dashboard exists with accepted-schedule visibility and private-item filtering semantics.
+- Spouse influence editing exists in spouse dashboard, but quick-edit currently exposes only `spouse_priority` and `spouse_urgency` there.
+- Requirement-level spouse deadline influence is supported in domain payloads but not fully represented in spouse dashboard quick-edit UX.
 
-**Impact:** potential overexposure of unrelated owner history to spouse-role users.
+### 8) Self-host/deploy baseline (TrueNAS-oriented)
+**Status:** ⚠️ Functionally prepared; live deploy proof still environment-dependent
 
-**Next MVP action:** tighten history authorization to explicit relationship scope (same owner household link), then add policy tests.
-
-### G5 — API test ergonomics still require `PYTHONPATH=.`
-**Status:** ✅ Closed  
-**Verified:** `pytest -q` fails collection from `apps/api` unless `PYTHONPATH=.` is provided.
-
-**Impact:** friction for local/CI command consistency.
-
-**Next MVP action:** configure package path in pytest settings or project layout so `pytest -q` works directly.
+- Hardening docs/scripts and tests exist (backup/restore, rate limiting, API keys).
+- Live TrueNAS deployment verification remains a final environment execution step.
 
 ---
 
-## Prioritized execution order
-1. **G1** Weekly proposal UI wiring.
-2. **G2** Note extraction UI wiring.
-3. **G3** Planned-action schedule settings model/API/UI.
-4. **G4** History authorization hardening + tests.
-5. **G5** Pytest path ergonomics cleanup.
+## Remaining prioritized gaps (near-MVP)
 
-## Definition of done for this consolidated backlog
-- All five gaps above are closed with tests or explicit validation steps.
-- No approval-first planning/scheduling guardrails are weakened.
-- Spouse influence remains separate from owner priority fields.
-- This file remains the only active gap-analysis tracker.
+### G1 — Spouse dashboard quick-edit does not include spouse deadline fields
+**Priority:** P0 (MVP requirement-fit)
+
+**Current evidence:**
+- Spouse dashboard quick edit handles only `spouse_priority` and `spouse_urgency` updates.
+- Spouse deadline fields are present in domain models/forms elsewhere, but not in this primary spouse-facing flow.
+
+**Impact:**
+- The “wife importance + deadline inputs” requirement is only partially satisfied in the default spouse dashboard experience.
+
+**Recommended closure:**
+- Add spouse dashboard controls for `spouse_deadline` + `spouse_deadline_type` (with validation and clear save/error states).
+- Add/extend API integration tests for spouse-role deadline influence updates through the same flow.
+
+### G2 — App settings UX is behind API capabilities for planned-action cadence
+**Priority:** P1 (MVP usability/completion)
+
+**Current evidence:**
+- API/settings schemas and tests include cadence/timezone fields (`app_timezone`, weekly planning cadence/time, note scan cadence, reminder scan interval, automation pause).
+- Settings web screen currently emphasizes integration toggles/audit/spouse management and does not expose full cadence controls.
+
+**Impact:**
+- Owner cannot fully tune planning/reminder/scan behavior from UI despite backend support.
+
+**Recommended closure:**
+- Extend settings UI to include existing API-backed cadence fields and validation messages.
+- Keep approval-first guardrail messaging visible when automation is toggled.
+
+### G3 — Production validation step for TrueNAS packaging remains open
+**Priority:** P2 (release-readiness)
+
+**Current evidence:**
+- Scripts/tests/docs cover hardening baseline.
+- Final live TrueNAS runbook execution is not yet documented as completed.
+
+**Impact:**
+- Residual deployment risk at MVP handoff.
+
+**Recommended closure:**
+- Run/record one full TrueNAS deployment verification pass (install, health, backup/restore smoke, auth rate-limit smoke).
+
+---
+
+## Suggested MVP-close sequence
+1. **Close G1** (spouse deadline quick-edit parity in spouse dashboard).
+2. **Close G2** (settings cadence controls UI).
+3. **Close G3** (live TrueNAS proof and evidence capture).
+
+With these three items completed, MVP scope should be considered materially closed for release-candidate quality.
