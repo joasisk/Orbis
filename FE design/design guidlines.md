@@ -320,6 +320,27 @@ Each suggestion must include:
 
 ---
 
+## Form and Menu Consistency Rules
+
+### Input Shape Consistency
+
+- All standard inputs (`input`, `select`, `textarea`) must keep the same corner rounding on all corners.
+- Do not use reduced bottom corner radius on text inputs.
+- Bottom-edge focus emphasis is still allowed (for accessibility and active-state clarity), but it must not alter corner geometry.
+
+### Settings Form Layout
+
+- In Settings screens, form controls must stack vertically.
+- Avoid horizontal wrapping layouts for key form fields.
+- Each label/control pair should read top-to-bottom to preserve readability and reduce cognitive load.
+
+### User Menu Item Uniformity
+
+- All items inside the user menu dropdown must share the same surface, typography, spacing, and alignment style.
+- Links and buttons in the same menu must be visually identical unless a destructive action variant is explicitly introduced.
+
+---
+
 ## 10. Screen-Specific Behavior
 
 ### 10.1 Day

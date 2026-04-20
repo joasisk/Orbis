@@ -12,9 +12,22 @@ export function ScreenHeader({ title, subtitle, actions }: { title: string; subt
   );
 }
 
-export function SectionCard({ title, children, tone = "default" }: { title: string; children: ReactNode; tone?: "default" | "accent" }) {
+export function SectionCard({
+  title,
+  children,
+  tone = "default",
+  className,
+}: {
+  title: string;
+  children: ReactNode;
+  tone?: "default" | "accent";
+  className?: string;
+}) {
+  const toneClass = tone === "accent" ? " section-card--accent" : "";
+  const customClass = className ? ` ${className}` : "";
+
   return (
-    <section className={`section-card${tone === "accent" ? " section-card--accent" : ""}`}>
+    <section className={`section-card${toneClass}${customClass}`}>
       <h2>{title}</h2>
       {children}
     </section>
