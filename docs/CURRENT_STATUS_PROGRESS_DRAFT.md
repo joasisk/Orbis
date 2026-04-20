@@ -16,7 +16,7 @@ The project is **close to MVP completion**.
 
 - Core API and web workflows for task management, weekly planning, focus execution, calendar integration, and notes extraction are implemented.
 - Automated checks currently pass for API and web static quality gates.
-- Remaining work is concentrated in **final UX parity** (spouse deadline input path, settings cadence controls) and **deployment proof** (live TrueNAS verification).
+- Remaining work is concentrated in **settings cadence UX parity** and **deployment proof** (live TrueNAS verification).
 
 ---
 
@@ -62,10 +62,9 @@ The project is **close to MVP completion**.
 **Status:** ✅ Complete (MVP baseline)
 
 ## Phase 6 — Wife visibility and influence experience
-**Status:** ⚠️ Mostly complete
+**Status:** ✅ Complete
 
-- Spouse dashboard and influence updates are in place.
-- Remaining: spouse dashboard quick-edit parity for spouse deadline inputs.
+- Spouse dashboard and influence updates are in place, including spouse deadline quick-edit parity.
 
 ## Phase 7 — Hardening and TrueNAS packaging
 **Status:** ⚠️ Mostly complete
@@ -77,9 +76,8 @@ The project is **close to MVP completion**.
 
 ## MVP-close checklist (recommended)
 
-1. Add spouse dashboard quick-edit controls for `spouse_deadline` + `spouse_deadline_type`.
-2. Add settings UI controls for existing API-backed cadence/timezone fields.
-3. Execute and document one complete TrueNAS deploy verification pass.
+1. Add settings UI controls for existing API-backed cadence/timezone fields.
+2. Execute and document one complete TrueNAS deploy verification pass.
 
 ---
 
@@ -87,4 +85,4 @@ The project is **close to MVP completion**.
 
 - **High confidence:** backend MVP capabilities and quality gates.
 - **Medium-high confidence:** day-to-day owner UX.
-- **Medium confidence:** final spouse-flow parity and deployment handoff evidence.
+- **Medium confidence:** deployment handoff evidence.

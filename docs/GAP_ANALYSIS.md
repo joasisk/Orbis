@@ -54,11 +54,11 @@ Scope: Gap analysis against `docs/REQUIREMENTS.md` + `docs/MVP_PLAN.md` with imp
 - Web schedule dashboard includes review/accept/dismiss workflow.
 
 ### 7) Spouse visibility + influence
-**Status:** ⚠️ Mostly implemented; one UX gap remains
+**Status:** ✅ Implemented (MVP-ready baseline)
 
 - Spouse dashboard exists with accepted-schedule visibility and private-item filtering semantics.
-- Spouse influence editing exists in spouse dashboard, but quick-edit currently exposes only `spouse_priority` and `spouse_urgency` there.
-- Requirement-level spouse deadline influence is supported in domain payloads but not fully represented in spouse dashboard quick-edit UX.
+- Spouse influence quick-edit supports `spouse_priority`, `spouse_urgency`, `spouse_deadline`, and `spouse_deadline_type`.
+- Integration coverage validates spouse deadline influence updates (including clear/reset) through spouse-role flow.
 
 ### 8) Self-host/deploy baseline (TrueNAS-oriented)
 **Status:** ⚠️ Functionally prepared; live deploy proof still environment-dependent
@@ -71,18 +71,18 @@ Scope: Gap analysis against `docs/REQUIREMENTS.md` + `docs/MVP_PLAN.md` with imp
 ## Remaining prioritized gaps (near-MVP)
 
 ### G1 — Spouse dashboard quick-edit does not include spouse deadline fields
-**Priority:** P0 (MVP requirement-fit)
+**Priority:** P0 (MVP requirement-fit)  
+**Status:** ✅ Closed (2026-04-20)
 
 **Current evidence:**
-- Spouse dashboard quick edit handles only `spouse_priority` and `spouse_urgency` updates.
-- Spouse deadline fields are present in domain models/forms elsewhere, but not in this primary spouse-facing flow.
+- Spouse dashboard quick-edit now includes `spouse_deadline` + `spouse_deadline_type` in the spouse-facing flow.
+- Spouse influence persistence path supports add/update/clear for spouse deadline fields.
 
 **Impact:**
-- The “wife importance + deadline inputs” requirement is only partially satisfied in the default spouse dashboard experience.
+- The “wife importance + deadline inputs” requirement is now covered in the default spouse dashboard experience.
 
 **Recommended closure:**
-- Add spouse dashboard controls for `spouse_deadline` + `spouse_deadline_type` (with validation and clear save/error states).
-- Add/extend API integration tests for spouse-role deadline influence updates through the same flow.
+- Completed in web spouse dashboard quick-edit and backed by integration test coverage.
 
 ### G2 — App settings UX is behind API capabilities for planned-action cadence
 **Priority:** P1 (MVP usability/completion)
@@ -114,8 +114,7 @@ Scope: Gap analysis against `docs/REQUIREMENTS.md` + `docs/MVP_PLAN.md` with imp
 ---
 
 ## Suggested MVP-close sequence
-1. **Close G1** (spouse deadline quick-edit parity in spouse dashboard).
-2. **Close G2** (settings cadence controls UI).
-3. **Close G3** (live TrueNAS proof and evidence capture).
+1. **Close G2** (settings cadence controls UI).
+2. **Close G3** (live TrueNAS proof and evidence capture).
 
-With these three items completed, MVP scope should be considered materially closed for release-candidate quality.
+With these remaining items completed, MVP scope should be considered materially closed for release-candidate quality.
