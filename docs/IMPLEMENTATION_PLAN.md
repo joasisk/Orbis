@@ -195,6 +195,9 @@ Definition of done (for first increment):
 - SDK includes task/project read operations and core action helpers (daily plan/focus start)
 - automated tests validate request auth header behavior and error handling
 
+Detailed plan:
+- See `docs/PHASE8_PLAN.md` for increment sequencing, scope boundaries, and per-increment exit criteria.
+
 ## Detailed schedule/performance extension plan
 - See `docs/SCHEDULE_AND_PERFORMANCE_MODEL_PLAN.md` for DB, API, and web implementation details for explicit weekly/daily schedules and adaptive performance telemetry.
 - **When this work happens in the implementation plan:** this extension is tracked as **Phase 4.1**.
