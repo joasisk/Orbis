@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 UiLanguage = Literal["en", "sk", "de", "it", "es", "pl"]
 NotesScanFrequency = Literal["daily", "weekly"]
+AiPreferredProvider = Literal["heuristic-local", "openai"]
 
 
 class UserSettingsResponse(BaseModel):
@@ -19,7 +20,7 @@ class UserSettingsResponse(BaseModel):
     ai_planning_enabled: bool
     ai_auto_generate_weekly: bool
     ai_require_manual_approval: bool
-    ai_preferred_provider: str | None
+    ai_preferred_provider: AiPreferredProvider | None
     app_timezone: str
     weekly_planning_enabled: bool
     weekly_planning_day_of_week: int
@@ -47,7 +48,7 @@ class UserSettingsPatchRequest(BaseModel):
     ai_planning_enabled: bool | None = None
     ai_auto_generate_weekly: bool | None = None
     ai_require_manual_approval: bool | None = None
-    ai_preferred_provider: str | None = Field(default=None, max_length=64)
+    ai_preferred_provider: AiPreferredProvider | None = None
     app_timezone: str | None = Field(default=None, max_length=64)
     weekly_planning_enabled: bool | None = None
     weekly_planning_day_of_week: int | None = Field(default=None, ge=0, le=6)

@@ -11,7 +11,7 @@ type SettingsPayload = {
   ai_planning_enabled: boolean;
   ai_auto_generate_weekly: boolean;
   ai_require_manual_approval: boolean;
-  ai_preferred_provider: string | null;
+  ai_preferred_provider: "heuristic-local" | "openai" | null;
   app_timezone: string;
   weekly_planning_enabled: boolean;
   weekly_planning_day_of_week: number;
@@ -162,7 +162,16 @@ export function SettingsUserDashboard() {
             <label><input type="checkbox" checked={form.ai_planning_enabled} onChange={(event) => setForm({ ...form, ai_planning_enabled: event.target.checked })} /> {translate(language, "aiPlanningEnabled")}</label>
             <label><input type="checkbox" checked={form.ai_auto_generate_weekly} onChange={(event) => setForm({ ...form, ai_auto_generate_weekly: event.target.checked })} /> {translate(language, "autoGenerateTrajectory")}</label>
             <label><input type="checkbox" checked={form.ai_require_manual_approval} onChange={(event) => setForm({ ...form, ai_require_manual_approval: event.target.checked })} /> {translate(language, "requireManualApproval")}</label>
-            <input className="app-input" value={form.ai_preferred_provider ?? ""} onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value || null })} placeholder={translate(language, "preferredProvider")} />
+            <label htmlFor="preferred-ai-provider">{translate(language, "preferredProvider")}</label>
+            <select
+              id="preferred-ai-provider"
+              className="app-input"
+              value={form.ai_preferred_provider ?? "heuristic-local"}
+              onChange={(event) => setForm({ ...form, ai_preferred_provider: event.target.value as "heuristic-local" | "openai" })}
+            >
+              <option value="heuristic-local">{translate(language, "aiProviderHeuristicLocal")}</option>
+              <option value="openai">{translate(language, "aiProviderOpenAi")}</option>
+            </select>
           </SectionCard>
 
           <SectionCard title={translate(language, "aiAgentConnectionTitle")} className="settings-form-card">

@@ -216,6 +216,28 @@ def test_guardrail_rejects_disabling_manual_approval_when_auto_generation_on() -
             pass
 
 
+def test_invalid_ai_provider_is_rejected() -> None:
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+
+    try:
+        _bootstrap_owner(client)
+        owner_tokens = _login(client, "owner@example.com", "Password123!")
+        headers = _auth_headers(owner_tokens["access_token"])
+
+        invalid_resp = client.patch(
+            "/api/v1/settings/me",
+            headers=headers,
+            json={"ai_preferred_provider": "something-else"},
+        )
+        assert invalid_resp.status_code == 422
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
 def test_rejects_invalid_timezone_and_weekly_notes_without_day() -> None:
     client_gen = _client_with_test_db()
     client = next(client_gen)

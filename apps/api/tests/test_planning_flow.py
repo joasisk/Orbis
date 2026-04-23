@@ -1,6 +1,7 @@
 from collections.abc import Generator
 
 import app.main as app_main
+import app.services.planning as planning_service
 from app.core.db import Base, get_db
 from app.main import app
 from app.models import (  # noqa: F401
@@ -25,6 +26,7 @@ from app.models import (  # noqa: F401
     WeeklyPlanProposal,
     WeeklySchedule,
 )
+from app.services.ai import WeeklyPlanSuggestion
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -194,6 +196,53 @@ def test_note_extraction_preview_and_accept_creates_tasks() -> None:
         titles = [item["title"] for item in tasks_resp.json()]
         assert "book dentist" in titles
         assert "send project update" in titles
+    finally:
+        try:
+            next(client_gen)
+        except StopIteration:
+            pass
+
+
+def test_ai_provider_switch_uses_openai_when_preferred(monkeypatch) -> None:
+    class FakeOpenAIProvider:
+        provider_key = "openai"
+
+        def generate_weekly_plan(self, tasks):
+            return [
+                WeeklyPlanSuggestion(
+                    task_id=tasks[0].id,
+                    suggested_day="monday",
+                    suggested_minutes=30,
+                    rationale="openai_test",
+                )
+            ]
+
+        def extract_task_candidates(self, note_content: str):
+            return []
+
+    def fake_get_default_provider(preferred_provider: str | None = None):
+        assert preferred_provider == "openai"
+        return FakeOpenAIProvider()
+
+    monkeypatch.setattr(planning_service, "get_default_provider", fake_get_default_provider)
+
+    client_gen = _client_with_test_db()
+    client = next(client_gen)
+    try:
+        token = _bootstrap_and_token(client)
+        headers = _headers(token)
+        _seed_tasks(client, headers)
+
+        settings_resp = client.patch("/api/v1/settings/me", headers=headers, json={"ai_preferred_provider": "openai"})
+        assert settings_resp.status_code == 200
+
+        proposal_resp = client.post(
+            "/api/v1/planning/weekly-proposals/generate",
+            headers=headers,
+            json={"week_start_date": "2026-04-13"},
+        )
+        assert proposal_resp.status_code == 200
+        assert proposal_resp.json()["provider_key"] == "openai"
     finally:
         try:
             next(client_gen)

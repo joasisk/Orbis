@@ -16,6 +16,7 @@ from app.models.planning import (
 )
 from app.models.reminder import ReminderEvent
 from app.models.user import User
+from app.models.user_settings import UserSettings
 from app.schemas.planning import (
     DailyScheduleItemFocusEndRequest,
     DailyScheduleItemFocusStartRequest,
@@ -46,7 +47,7 @@ class PlanningService:
 
     @staticmethod
     def generate_weekly_proposal(db: Session, actor: User, payload: WeeklyPlanGenerateRequest) -> WeeklyPlanProposalResponse:
-        provider = get_default_provider()
+        provider = get_default_provider(PlanningService._preferred_ai_provider(db, actor))
 
         tasks = list(
             db.scalars(
@@ -161,7 +162,7 @@ class PlanningService:
         source_ref: str | None,
         note_content: str,
     ) -> NoteExtractionResponse:
-        provider = get_default_provider()
+        provider = get_default_provider(PlanningService._preferred_ai_provider(db, actor))
         candidates = provider.extract_task_candidates(note_content)
         extraction = NoteExtraction(
             owner_user_id=actor.id,
@@ -246,6 +247,13 @@ class PlanningService:
                 for item in items
             ],
         )
+
+    @staticmethod
+    def _preferred_ai_provider(db: Session, actor: User) -> str | None:
+        settings = db.scalar(select(UserSettings).where(UserSettings.owner_user_id == actor.id))
+        if settings is None:
+            return None
+        return settings.ai_preferred_provider
 
     @staticmethod
     def _extraction_response(extraction: NoteExtraction) -> NoteExtractionResponse:
