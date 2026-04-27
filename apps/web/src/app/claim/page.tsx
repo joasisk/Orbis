@@ -1,3 +1,4 @@
+"use client";
 import { AuthEntry } from "@/components/auth-entry";
 
 export default function ClaimPage() {
