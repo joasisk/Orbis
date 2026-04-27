@@ -18,9 +18,7 @@ services:
   web:
     build:
       context: ./apps/web
-      dockerfile_inline: |
-        FROM node:20-alpine
-        WORKDIR /app
+      dockerfile: Dockerfile
     image: orbis-web:dev
     container_name: orbis-web
     working_dir: /app
@@ -49,9 +47,7 @@ services:
   api:
     build:
       context: ./apps/api
-      dockerfile_inline: |
-        FROM python:3.12-slim
-        WORKDIR /app
+      dockerfile: Dockerfile
     image: orbis-api:dev
     container_name: orbis-api
     working_dir: /app
@@ -93,7 +89,7 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -156,7 +152,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orbis} -d ${POSTGRES_DB:-orbis}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orbis} -d ${POSTGRES_DB:-orbis}" ]
       interval: 10s
       timeout: 5s
       retries: 10
