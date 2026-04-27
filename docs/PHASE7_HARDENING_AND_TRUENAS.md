@@ -75,8 +75,7 @@ Backups include:
    - `API_SECRET_KEY`
    - `POSTGRES_PASSWORD`
    - optional provider keys (`OPENAI_API_KEY`, etc.)
-4. Run migrations before first production use:
-   - `alembic upgrade head` in API container.
+4. Migrations run automatically at API startup/update (with failure logging and non-zero exit on error).
 5. Validate post-deploy:
    - API health endpoints return `200`.
    - owner login works.
