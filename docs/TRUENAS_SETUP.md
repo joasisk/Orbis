@@ -50,15 +50,12 @@ Also configure the app URLs/domains and any optional provider keys your deployme
 
 Tip: start from [`.env.example`](../.env.example) and copy values into TrueNAS app config instead of baking secrets into images.
 
-## 5) Run database migrations
-After the app is created (and before first real use), run migrations in the API container:
+## 5) Database migrations are now automatic
+The `api` service startup command checks the current Alembic revision and compares it with the latest migration head on every start/update.
 
-```bash
-cd apps/api
-alembic upgrade head
-```
-
-If running inside a container shell, execute the equivalent `alembic upgrade head` from the API app working directory.
+- If revisions differ, it runs `alembic upgrade head` automatically.
+- If already current, it logs that migrations are up to date and continues startup.
+- If migration execution fails, startup exits non-zero and the failure is visible in container logs.
 
 ## 6) Post-deploy validation
 Verify:
