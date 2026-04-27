@@ -1,6 +1,10 @@
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+import httpx
+
+from app.core.config import settings
 from app.models.domain import Task
 
 PROMPT_TEMPLATE_VERSION = "planning.weekly.v1"
@@ -71,5 +75,87 @@ class HeuristicAIProvider(AIProvider):
         return candidates
 
 
-def get_default_provider() -> AIProvider:
+class OpenAIProvider(AIProvider):
+    provider_key = "openai"
+
+    def __init__(self) -> None:
+        if not settings.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required when ai_preferred_provider=openai")
+
+    def generate_weekly_plan(self, tasks: Sequence[Task]) -> list[WeeklyPlanSuggestion]:
+        tasks_payload = [
+            {
+                "task_id": task.id,
+                "title": task.title,
+                "priority": task.priority,
+                "urgency": task.urgency,
+                "deadline_type": task.deadline_type,
+                "deadline_at": task.deadline_at.isoformat() if task.deadline_at else None,
+                "spouse_priority": task.spouse_priority,
+                "spouse_urgency": task.spouse_urgency,
+            }
+            for task in tasks
+        ]
+        raw = self._chat_json(
+            (
+                "Return strict JSON only as an array. Each item: "
+                '{"task_id":"string","suggested_day":"monday..sunday","suggested_minutes":integer,"rationale":"string"}. '
+                "Include max 12 items."
+            ),
+            json.dumps({"tasks": tasks_payload}),
+        )
+        suggestions: list[WeeklyPlanSuggestion] = []
+        for item in raw[:12]:
+            suggestions.append(
+                WeeklyPlanSuggestion(
+                    task_id=str(item["task_id"]),
+                    suggested_day=str(item["suggested_day"]).lower(),
+                    suggested_minutes=max(10, min(int(item["suggested_minutes"]), 360)),
+                    rationale=str(item.get("rationale", "openai_suggested")),
+                )
+            )
+        return suggestions
+
+    def extract_task_candidates(self, note_content: str) -> list[NoteTaskCandidate]:
+        raw = self._chat_json(
+            ('Return strict JSON only as an array. Each item: {"title":"string","notes":"string|null"}. Include max 8 items.'),
+            note_content,
+        )
+        return [NoteTaskCandidate(title=str(item["title"])[:200], notes=item.get("notes")) for item in raw[:8] if item.get("title")]
+
+    def _chat_json(self, system_prompt: str, user_prompt: str) -> list[dict]:
+        response = httpx.post(
+            f"{settings.openai_base_url.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.openai_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": settings.openai_model,
+                "temperature": 0.3,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            },
+            timeout=settings.openai_timeout_seconds,
+        )
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"]
+        normalized = content.strip()
+        if normalized.startswith("```"):
+            normalized = normalized.strip("`")
+            normalized = normalized.replace("json\n", "", 1)
+        parsed = json.loads(normalized)
+        if not isinstance(parsed, list):
+            raise ValueError("OpenAI provider must return a JSON array")
+        return [item for item in parsed if isinstance(item, dict)]
+
+
+def get_default_provider(preferred_provider: str | None = None) -> AIProvider:
+    selected = (preferred_provider or "heuristic-local").strip().lower()
+    if selected in {"", "heuristic-local"}:
+        return HeuristicAIProvider()
+    if selected == "openai":
+        return OpenAIProvider()
     return HeuristicAIProvider()
