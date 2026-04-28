@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_UI_LANGUAGE, type UiLanguage } from "@/lib/i18n";
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 const ACCESS_TOKEN_KEY = "orbis_access_token";
 
 type SettingsLanguagePayload = {
