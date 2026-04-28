@@ -31,7 +31,7 @@ type NoteExtraction = {
   candidate_tasks: Array<{ title: string; notes: string | null }>;
 };
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 const authHeaders = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 function mondayIso(baseDate: Date) {

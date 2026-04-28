@@ -12,7 +12,7 @@ const ACCESS_TOKEN_COOKIE = "orbis_access_token";
 const REFRESH_TOKEN_KEY = "orbis_refresh_token";
 const ACCESS_TOKEN_KEY = "orbis_access_token";
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
 function saveAuthTokens(accessToken: string, refreshToken: string): void {
   window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
