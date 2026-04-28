@@ -45,3 +45,33 @@ jobs:
             ${{ matrix.image }}:latest
             ${{ matrix.image }}:${{ github.sha }}
           build-args: ${{ matrix.build_args }}
+
+  truenas-manifest:
+    runs-on: ubuntu-latest
+    needs: publish
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Render TrueNAS deployment compose (sha pinned)
+        run: |
+          set -euo pipefail
+          WEB_IMAGE="ghcr.io/${{ github.repository_owner }}/orbis-web:${{ github.sha }}"
+          API_IMAGE="ghcr.io/${{ github.repository_owner }}/orbis-api:${{ github.sha }}"
+          sed \
+            -e "s|ghcr.io/joasisk/orbis-web:latest|${WEB_IMAGE}|g" \
+            -e "s|ghcr.io/joasisk/orbis-api:latest|${API_IMAGE}|g" \
+            docker-compose.truenas.yml > docker-compose.truenas.sha.yml
+
+          cat > truenas-images.txt <<EOF
+          WEB_IMAGE=${WEB_IMAGE}
+          API_IMAGE=${API_IMAGE}
+          WORKER_IMAGE=${API_IMAGE}
+          EOF
+
+      - name: Upload TrueNAS deploy manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: truenas-deploy-${{ github.sha }}
+          path: |
+            docker-compose.truenas.sha.yml
+            truenas-images.txt
