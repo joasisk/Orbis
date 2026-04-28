@@ -42,6 +42,13 @@ When configuring the app:
 3. Expose only the proxy port externally (`8080:80` in the example).
 4. Access the app through the proxy URL (for example: `http://192.168.5.201:8080`), not the web container port `3000`.
 
+### Optional: use CI-generated SHA-pinned manifest
+The Docker publish workflow now uploads a `truenas-deploy-<git-sha>` artifact that includes:
+- `docker-compose.truenas.sha.yml`
+- `truenas-images.txt`
+
+This artifact pins `web`, `api`, and `worker` images to immutable SHA tags for that publish. Using it in TrueNAS avoids `latest` tag cache ambiguity and makes app updates deterministic.
+
 ## 4) Why the proxy URL matters
 - `localhost` in browser JavaScript always means the **end user's machine**, not the TrueNAS host.
 - A hardcoded browser URL such as `http://localhost:8000/api/v1` fails for remote users because their own laptop/desktop usually has nothing listening on port `8000`.
