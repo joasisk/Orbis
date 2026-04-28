@@ -58,7 +58,7 @@ type TaskModalEventDetail = {
   presetProjectId?: string;
 };
 
-const defaultApiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const defaultApiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 const headers = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 const TASK_MODAL_EVENT = "orbis:task-modal";

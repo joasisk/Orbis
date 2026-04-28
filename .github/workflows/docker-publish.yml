@@ -19,9 +19,12 @@ jobs:
           - name: web
             context: ./apps/web
             image: ghcr.io/${{ github.repository_owner }}/orbis-web
+            build_args: |
+              NEXT_PUBLIC_API_BASE_URL=/api/v1
           - name: api
             context: ./apps/api
             image: ghcr.io/${{ github.repository_owner }}/orbis-api
+            build_args: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -41,3 +44,4 @@ jobs:
           tags: |
             ${{ matrix.image }}:latest
             ${{ matrix.image }}:${{ github.sha }}
+          build-args: ${{ matrix.build_args }}

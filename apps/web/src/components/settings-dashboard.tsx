@@ -34,7 +34,7 @@ type SpouseStatusPayload = {
   } | null;
 };
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 const headers = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 export function SettingsDashboard() {
