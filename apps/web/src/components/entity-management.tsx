@@ -33,12 +33,14 @@ type ProjectRecord = {
   visibility_scope: VisibilityScope;
 };
 
+type TaskStatus = "staged" | "primed" | "in_flight" | "holding" | "mission_complete" | "scrubbed";
+
 type TaskRecord = {
   id: string;
   project_id: string | null;
   title: string;
   notes: string | null;
-  status: string;
+  status: TaskStatus;
   priority: number | null;
   urgency: number | null;
   deadline: string | null;
@@ -110,7 +112,7 @@ export function TaskModalHost() {
     projectId: "",
     title: "",
     notes: "",
-    status: "todo",
+    status: "staged" as TaskStatus,
     priority: EMPTY_PRIORITY,
     urgency: EMPTY_PRIORITY,
     deadline: EMPTY_DEADLINE,
@@ -168,7 +170,7 @@ export function TaskModalHost() {
         projectId: openState?.presetProjectId ?? "",
         title: "",
         notes: "",
-        status: "todo",
+        status: "staged" as TaskStatus,
         priority: EMPTY_PRIORITY,
         urgency: EMPTY_PRIORITY,
         deadline: EMPTY_DEADLINE,
@@ -232,7 +234,17 @@ export function TaskModalHost() {
     };
   }, [dirty, open]);
 
-  const modalProjects = useMemo(() => projects.filter((project) => project.area_id === form.areaId), [projects, form.areaId]);
+  const [assignmentQuery, setAssignmentQuery] = useState("");
+  const assignmentOptions = useMemo(() => projects.map((project) => ({
+    projectId: project.id,
+    areaId: project.area_id,
+    label: `${areas.find((a)=>a.id===project.area_id)?.name ?? "Unknown orbit"}: ${project.name}`
+  })), [projects, areas]);
+  const filteredAssignments = useMemo(() => {
+    const q = assignmentQuery.trim().toLowerCase();
+    if (!q) return assignmentOptions;
+    return assignmentOptions.filter((opt) => opt.label.toLowerCase().includes(q));
+  }, [assignmentOptions, assignmentQuery]);
 
   function closeModal() {
     if (dirty && !window.confirm("Discard task changes?")) return;
@@ -248,15 +260,14 @@ export function TaskModalHost() {
       project_id: form.projectId || null,
       title: form.title,
       notes: form.notes || null,
-      status: form.status,
-      priority: parseNumeric(form.priority),
-      urgency: parseNumeric(form.urgency),
+      priority: form.priority || null,
+      urgency: form.urgency || null,
       deadline: parseDateTime(form.deadline),
       deadline_type: (form.deadlineType || null) as DeadlineType | null,
       is_private: form.isPrivate,
       visibility_scope: (form.isPrivate ? "owner" : form.visibilityScope) as VisibilityScope,
-      spouse_priority: parseNumeric(form.spousePriority),
-      spouse_urgency: parseNumeric(form.spouseUrgency),
+      spouse_priority: form.spousePriority || null,
+      spouse_urgency: form.spouseUrgency || null,
       spouse_deadline: parseDateTime(form.spouseDeadline),
       spouse_deadline_type: (form.spouseDeadlineType || null) as DeadlineType | null,
     };
@@ -289,18 +300,11 @@ export function TaskModalHost() {
         {loading ? <p>Loading…</p> : null}
         <form className="stack-form" onSubmit={onSubmit}>
           <input className="app-input" placeholder="Title" required value={form.title} onChange={(event) => { setForm({ ...form, title: event.target.value }); setDirty(true); }} />
-          <select className="app-input" value={form.areaId} onChange={(event) => { setForm({ ...form, areaId: event.target.value, projectId: "" }); setDirty(true); }}>
-            <option value="">{`Select ${orbitLabel}`}</option>
-            {areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
-          </select>
-          <select className="app-input" value={form.projectId} onChange={(event) => { setForm({ ...form, projectId: event.target.value }); setDirty(true); }} disabled={!form.areaId}>
-            <option value="">No project</option>
-            {modalProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-          </select>
-          <textarea className="app-input app-input--text" placeholder="Notes" value={form.notes} onChange={(event) => { setForm({ ...form, notes: event.target.value }); setDirty(true); }} />
-          <input className="app-input" placeholder="Status" value={form.status} onChange={(event) => { setForm({ ...form, status: event.target.value }); setDirty(true); }} />
-          <input className="app-input" type="number" min="0" max="10" placeholder="Priority" value={form.priority} onChange={(event) => { setForm({ ...form, priority: event.target.value }); setDirty(true); }} />
-          <input className="app-input" type="number" min="0" max="10" placeholder="Urgency" value={form.urgency} onChange={(event) => { setForm({ ...form, urgency: event.target.value }); setDirty(true); }} />
+          <textarea className="app-input app-input--text" placeholder="Description (Markdown supported)" value={form.notes} onChange={(event) => { setForm({ ...form, notes: event.target.value }); setDirty(true); }} />
+          <input className="app-input" list="assignment-options" placeholder="Orbit: Project" value={assignmentQuery} onChange={(event)=>{ const value=event.target.value; setAssignmentQuery(value); const selected=assignmentOptions.find((opt)=>opt.label===value); if(selected){ setForm({ ...form, areaId: selected.areaId, projectId: selected.projectId }); setDirty(true);} }} />
+          <datalist id="assignment-options">{filteredAssignments.map((opt)=><option key={opt.projectId} value={opt.label} />)}</datalist>
+          <select className="app-input" value={form.priority} onChange={(event) => { setForm({ ...form, priority: event.target.value }); setDirty(true); }}><option value="">Priority</option><option value="core">Core</option><option value="major">Major</option><option value="minor">Minor</option><option value="ambient">Ambient</option></select>
+          <select className="app-input" value={form.urgency} onChange={(event) => { setForm({ ...form, urgency: event.target.value }); setDirty(true); }}><option value="">Urgency</option><option value="immediate">Immediate</option><option value="near">Near</option><option value="planned">Planned</option><option value="flexible">Flexible</option></select>
           <input className="app-input" type="datetime-local" value={form.deadline} onChange={(event) => { setForm({ ...form, deadline: event.target.value }); setDirty(true); }} />
           <select className="app-input" value={form.deadlineType} onChange={(event) => { setForm({ ...form, deadlineType: event.target.value }); setDirty(true); }}>
             <option value="">No deadline type</option>

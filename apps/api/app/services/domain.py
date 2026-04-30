@@ -172,6 +172,8 @@ class DomainService:
     @staticmethod
     def create_task(db: Session, actor: User, payload: dict[str, Any]) -> Task:
         owner_user_id = actor.id
+        payload = payload.copy()
+        payload["status"] = "staged"
         if payload.get("project_id"):
             project = db.scalar(select(Project).where(Project.id == payload["project_id"]))
             if project is None:
@@ -216,8 +218,18 @@ class DomainService:
     @staticmethod
     def update_task(db: Session, actor: User, task_id: str, payload: dict[str, Any]) -> Task:
         entity = DomainService.get_task(db, actor, task_id)
-        DomainService._ensure_owner_only(actor, entity.owner_user_id)
         changes = {}
+        payload = payload.copy()
+        payload.pop("status", None)
+        if actor.role == "owner":
+            for field in ("spouse_priority", "spouse_urgency", "spouse_deadline", "spouse_deadline_type"):
+                payload.pop(field, None)
+            DomainService._ensure_owner_only(actor, entity.owner_user_id)
+        elif actor.role == "spouse":
+            allowed_fields = {"spouse_priority", "spouse_urgency", "spouse_deadline", "spouse_deadline_type"}
+            payload = {k: v for k, v in payload.items() if k in allowed_fields}
+        else:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         for key, value in payload.items():
             if getattr(entity, key) != value:
                 changes[key] = {"from": getattr(entity, key), "to": value}

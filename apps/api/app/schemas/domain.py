@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 DeadlineType = Literal["soft", "hard"]
 VisibilityScope = Literal["owner", "spouse", "shared"]
 Cadence = Literal["daily", "weekly", "monthly"]
+TaskStatus = Literal["staged", "primed", "in_flight", "holding", "mission_complete", "scrubbed"]
 
 
 class VersionResponse(BaseModel):
@@ -72,7 +73,7 @@ class ProjectUpdate(BaseModel):
     area_id: str | None = None
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = None
-    status: str | None = Field(default=None, min_length=1, max_length=32)
+    status: str | None = Field(default=None, min_length=1, max_length=32) = None
     priority: int | None = Field(default=None, ge=0, le=10)
     urgency: int | None = Field(default=None, ge=0, le=10)
     deadline: datetime | None = None
@@ -96,7 +97,7 @@ class TaskBase(PrioritizedFields):
     project_id: str | None = None
     title: str = Field(min_length=1, max_length=200)
     notes: str | None = None
-    status: str = Field(default="todo", min_length=1, max_length=32)
+    status: TaskStatus = "staged"
 
 
 class TaskCreate(TaskBase):
@@ -107,7 +108,7 @@ class TaskUpdate(BaseModel):
     project_id: str | None = None
     title: str | None = Field(default=None, min_length=1, max_length=200)
     notes: str | None = None
-    status: str | None = Field(default=None, min_length=1, max_length=32)
+    status: TaskStatus | None = None
     priority: int | None = Field(default=None, ge=0, le=10)
     urgency: int | None = Field(default=None, ge=0, le=10)
     deadline: datetime | None = None
