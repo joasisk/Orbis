@@ -94,8 +94,8 @@ def test_daily_plan_hard_deadline_priority_and_dependency_readiness() -> None:
             json={
                 "project_id": project_id,
                 "title": "Legal filing",
-                "priority": 1,
-                "urgency": 1,
+                "priority": "ambient",
+                "urgency": "flexible",
                 "deadline": hard_due_soon,
                 "deadline_type": "hard",
             },
@@ -105,7 +105,7 @@ def test_daily_plan_hard_deadline_priority_and_dependency_readiness() -> None:
         base_task_resp = client.post(
             "/api/v1/tasks",
             headers=headers,
-            json={"project_id": project_id, "title": "Prepare docs", "priority": 8, "urgency": 7},
+            json={"project_id": project_id, "title": "Prepare docs", "priority": "core", "urgency": "near"},
         )
         assert base_task_resp.status_code == 201
         base_task_id = base_task_resp.json()["id"]
@@ -113,7 +113,7 @@ def test_daily_plan_hard_deadline_priority_and_dependency_readiness() -> None:
         blocked_task_resp = client.post(
             "/api/v1/tasks",
             headers=headers,
-            json={"project_id": project_id, "title": "Submit package", "priority": 9, "urgency": 8},
+            json={"project_id": project_id, "title": "Submit package", "priority": "core", "urgency": "immediate"},
         )
         assert blocked_task_resp.status_code == 201
         blocked_task_id = blocked_task_resp.json()["id"]
@@ -163,9 +163,9 @@ def test_daily_plan_is_deterministic_for_same_input() -> None:
         project_id = project_resp.json()["id"]
 
         for payload in [
-            {"title": "A", "priority": 5, "urgency": 6},
-            {"title": "B", "priority": 8, "urgency": 2},
-            {"title": "C", "priority": 3, "urgency": 9},
+            {"title": "A", "priority": "major", "urgency": "near"},
+            {"title": "B", "priority": "core", "urgency": "flexible"},
+            {"title": "C", "priority": "minor", "urgency": "immediate"},
         ]:
             resp = client.post("/api/v1/tasks", headers=headers, json={"project_id": project_id, **payload})
             assert resp.status_code == 201
@@ -218,14 +218,14 @@ def test_daily_plan_applies_critical_household_weighting_for_spouse_influence() 
         baseline_task_resp = client.post(
             "/api/v1/tasks",
             headers=owner_headers,
-            json={"project_id": project_id, "title": "Routine cleanup", "priority": 5, "urgency": 5},
+            json={"project_id": project_id, "title": "Routine cleanup", "priority": "major", "urgency": "planned"},
         )
         assert baseline_task_resp.status_code == 201
 
         household_critical_resp = client.post(
             "/api/v1/tasks",
             headers=owner_headers,
-            json={"project_id": project_id, "title": "Fix nursery heater", "priority": 5, "urgency": 5},
+            json={"project_id": project_id, "title": "Fix nursery heater", "priority": "major", "urgency": "planned"},
         )
         assert household_critical_resp.status_code == 201
         household_critical_id = household_critical_resp.json()["id"]
@@ -234,8 +234,8 @@ def test_daily_plan_applies_critical_household_weighting_for_spouse_influence() 
             f"/api/v1/tasks/{household_critical_id}/spouse-influence",
             headers=spouse_headers,
             json={
-                "spouse_priority": 9,
-                "spouse_urgency": 8,
+                "spouse_priority": "core",
+                "spouse_urgency": "immediate",
                 "spouse_deadline": (datetime.now(UTC) + timedelta(hours=12)).isoformat(),
                 "spouse_deadline_type": "hard",
             },

@@ -36,14 +36,16 @@ class AIProvider:
 
 class HeuristicAIProvider(AIProvider):
     provider_key = "heuristic-local"
+    PRIORITY_SCORES = {"core": 10.0, "major": 7.0, "minor": 4.0, "ambient": 1.0}
+    URGENCY_SCORES = {"immediate": 10.0, "near": 7.0, "planned": 4.0, "flexible": 1.0}
 
     def generate_weekly_plan(self, tasks: Sequence[Task]) -> list[WeeklyPlanSuggestion]:
         days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
         def score(task: Task) -> float:
-            priority = float(task.priority or 0)
-            urgency = float(task.urgency or 0)
-            spouse = float(task.spouse_priority or 0)
+            priority = self.PRIORITY_SCORES.get(task.priority, 0.0)
+            urgency = self.URGENCY_SCORES.get(task.urgency, 0.0)
+            spouse = self.PRIORITY_SCORES.get(task.spouse_priority, 0.0)
             hard_bonus = 10 if task.deadline_type == "hard" else 0
             return (priority * 1.5) + (urgency * 1.2) + spouse + hard_bonus
 
@@ -54,7 +56,7 @@ class HeuristicAIProvider(AIProvider):
                 WeeklyPlanSuggestion(
                     task_id=task.id,
                     suggested_day=days[i % len(days)],
-                    suggested_minutes=45 if (task.priority or 0) >= 7 else 30,
+                    suggested_minutes=45 if self.PRIORITY_SCORES.get(task.priority, 0.0) >= 7 else 30,
                     rationale=f"ranked_for_weekly_plan_priority_{int(score(task))}",
                 )
             )

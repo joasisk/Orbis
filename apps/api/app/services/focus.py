@@ -15,7 +15,9 @@ from app.schemas.focus import (
 )
 from app.services.domain import DomainService
 
-TERMINAL_TASK_STATUSES = {"done", "completed", "cancelled", "archived"}
+TERMINAL_TASK_STATUSES = {"mission_complete", "scrubbed"}
+PRIORITY_SCORES = {"core": 10.0, "major": 7.0, "minor": 4.0, "ambient": 1.0}
+URGENCY_SCORES = {"immediate": 10.0, "near": 7.0, "planned": 4.0, "flexible": 1.0}
 
 
 class FocusService:
@@ -269,17 +271,19 @@ class FocusService:
                     reasons.append("has_soft_deadline")
 
         if task.priority is not None:
-            breakdown.priority += float(task.priority) * 4
-            if task.priority >= 7:
+            priority_score = PRIORITY_SCORES.get(task.priority, 0.0)
+            breakdown.priority += priority_score * 4
+            if priority_score >= 7:
                 reasons.append("high_priority")
 
         if task.urgency is not None:
-            breakdown.urgency += float(task.urgency) * 3
-            if task.urgency >= 7:
+            urgency_score = URGENCY_SCORES.get(task.urgency, 0.0)
+            breakdown.urgency += urgency_score * 3
+            if urgency_score >= 7:
                 reasons.append("high_urgency")
 
-        spouse_priority = float(task.spouse_priority) if task.spouse_priority is not None else 0.0
-        spouse_urgency = float(task.spouse_urgency) if task.spouse_urgency is not None else 0.0
+        spouse_priority = PRIORITY_SCORES.get(task.spouse_priority, 0.0) if task.spouse_priority is not None else 0.0
+        spouse_urgency = URGENCY_SCORES.get(task.spouse_urgency, 0.0) if task.spouse_urgency is not None else 0.0
         spouse_deadline_pressure = 0.0
         if task.spouse_deadline is not None:
             spouse_deadline = task.spouse_deadline
@@ -327,7 +331,7 @@ class FocusService:
             reasons.append("dependencies_ready")
 
         if current_energy is not None:
-            energy_demand = float(task.urgency) if task.urgency is not None else 5.0
+            energy_demand = URGENCY_SCORES.get(task.urgency, 5.0) if task.urgency is not None else 5.0
             energy_gap = current_energy - energy_demand
             if energy_gap >= 2:
                 breakdown.energy_fit += 15
