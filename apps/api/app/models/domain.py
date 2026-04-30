@@ -52,6 +52,14 @@ class Task(Base):
         CheckConstraint("deadline_type IN ('soft','hard')", name="ck_tasks_deadline_type"),
         CheckConstraint("spouse_deadline_type IN ('soft','hard')", name="ck_tasks_spouse_deadline_type"),
         CheckConstraint("visibility_scope IN ('owner','spouse','shared')", name="ck_tasks_visibility_scope"),
+        CheckConstraint("priority IN ('core','major','minor','ambient')", name="ck_tasks_priority"),
+        CheckConstraint("urgency IN ('immediate','near','planned','flexible')", name="ck_tasks_urgency"),
+        CheckConstraint("spouse_priority IN ('core','major','minor','ambient')", name="ck_tasks_spouse_priority"),
+        CheckConstraint("spouse_urgency IN ('immediate','near','planned','flexible')", name="ck_tasks_spouse_urgency"),
+        CheckConstraint(
+            "status IN ('staged','primed','in_flight','holding','mission_complete','scrubbed')",
+            name="ck_tasks_status",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
@@ -59,15 +67,15 @@ class Task(Base):
     project_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="todo", index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="staged", index=True)
     is_private: Mapped[bool] = mapped_column(nullable=False, default=False)
     visibility_scope: Mapped[str] = mapped_column(String(16), nullable=False, default="shared", index=True)
-    priority: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    urgency: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    urgency: Mapped[str | None] = mapped_column(String(16), nullable=True)
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deadline_type: Mapped[str | None] = mapped_column(String(8), nullable=True)
-    spouse_priority: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    spouse_urgency: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    spouse_priority: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    spouse_urgency: Mapped[str | None] = mapped_column(String(16), nullable=True)
     spouse_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     spouse_deadline_type: Mapped[str | None] = mapped_column(String(8), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
