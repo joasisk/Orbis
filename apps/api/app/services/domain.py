@@ -6,6 +6,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.models.domain import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
+from app.models.planning import DailySchedule, DailyScheduleItem
 from app.models.user import User
 
 TASK_STATUS_TRANSITIONS: dict[str, set[str]] = {
@@ -26,8 +27,27 @@ TASK_STATUS_ACTION_TARGET: dict[str, str] = {
     "restage": "staged",
 }
 
+TERMINAL_TASK_STATUSES = {"mission_complete", "scrubbed"}
+
 
 class DomainService:
+    @staticmethod
+    def _unschedule_task_from_today_forward(db: Session, task_id: str, owner_user_id: str) -> None:
+        now = datetime.utcnow().date()
+        scheduled_items = list(
+            db.scalars(
+                select(DailyScheduleItem)
+                .join(DailySchedule, DailySchedule.id == DailyScheduleItem.daily_schedule_id)
+                .where(
+                    DailyScheduleItem.task_id == task_id,
+                    DailyScheduleItem.owner_user_id == owner_user_id,
+                    DailySchedule.schedule_date >= now,
+                )
+            ).all()
+        )
+        for item in scheduled_items:
+            db.delete(item)
+
     @staticmethod
     def _jsonable(value: Any) -> Any:
         if isinstance(value, datetime):
@@ -267,6 +287,8 @@ class DomainService:
         if target_status not in allowed_targets:
             raise HTTPException(status_code=422, detail="Invalid status transition")
         entity.status = target_status
+        if target_status == "scrubbed":
+            DomainService._unschedule_task_from_today_forward(db, entity.id, entity.owner_user_id)
         DomainService._log_version(
             db,
             entity.owner_user_id,

@@ -39,7 +39,7 @@ from app.schemas.planning import (
 from app.services.ai import PROMPT_TEMPLATE_VERSION, get_default_provider
 from app.services.domain import DomainService
 
-TERMINAL_TASK_STATUSES = {"done", "completed", "cancelled", "archived"}
+TERMINAL_TASK_STATUSES = {"mission_complete", "scrubbed"}
 
 
 class PlanningService:
@@ -209,7 +209,7 @@ class PlanningService:
                 project_id=None,
                 title=str(candidate["title"]),
                 notes=candidate.get("notes"),
-                status="todo",
+                status="staged",
                 is_private=False,
                 visibility_scope="shared",
             )

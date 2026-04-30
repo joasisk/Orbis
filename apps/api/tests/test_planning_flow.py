@@ -108,9 +108,9 @@ def _seed_tasks(client: TestClient, headers: dict[str, str]) -> list[str]:
 
     ids: list[str] = []
     for payload in [
-        {"title": "File taxes", "priority": 9, "urgency": 8, "deadline_type": "hard"},
-        {"title": "Replace air filter", "priority": 7, "urgency": 5},
-        {"title": "Refactor utility script", "priority": 3, "urgency": 2},
+        {"title": "File taxes", "priority": "core", "urgency": "immediate", "deadline_type": "hard"},
+        {"title": "Replace air filter", "priority": "major", "urgency": "planned"},
+        {"title": "Refactor utility script", "priority": "minor", "urgency": "flexible"},
     ]:
         resp = client.post("/api/v1/tasks", headers=headers, json={"project_id": project_id, **payload})
         assert resp.status_code == 201
@@ -351,13 +351,13 @@ def test_spouse_dashboard_only_shows_accepted_week_and_suppresses_private_items(
         high_task_resp = client.post(
             "/api/v1/tasks",
             headers=owner_headers,
-            json={"project_id": project_id, "title": "Emergency plumber", "priority": 9, "urgency": 9},
+            json={"project_id": project_id, "title": "Emergency plumber", "priority": "core", "urgency": "immediate"},
         )
         assert high_task_resp.status_code == 201
         low_task_resp = client.post(
             "/api/v1/tasks",
             headers=owner_headers,
-            json={"project_id": project_id, "title": "Clean inbox", "priority": 2, "urgency": 2},
+            json={"project_id": project_id, "title": "Clean inbox", "priority": "ambient", "urgency": "flexible"},
         )
         assert low_task_resp.status_code == 201
         private_task_resp = client.post(
@@ -366,8 +366,8 @@ def test_spouse_dashboard_only_shows_accepted_week_and_suppresses_private_items(
             json={
                 "project_id": project_id,
                 "title": "Private banking call",
-                "priority": 8,
-                "urgency": 8,
+                "priority": "core",
+                "urgency": "immediate",
                 "is_private": True,
                 "visibility_scope": "owner",
             },
