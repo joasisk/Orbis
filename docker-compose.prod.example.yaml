@@ -13,13 +13,13 @@ services:
       - api
 
   web:
-    image: ghcr.io/joasisk/orbis-web:latest
+    image: ghcr.io/joasisk/orbis-web:1e24fe6575361df9574176cc5df6953caf7c4191
     restart: unless-stopped
     depends_on:
       - api
 
   api:
-    image: ghcr.io/joasisk/orbis-api:latest
+    image: ghcr.io/joasisk/orbis-api:1e24fe6575361df9574176cc5df6953caf7c4191
     restart: unless-stopped
     environment:
       APP_ENV: production
@@ -37,7 +37,7 @@ services:
       - redis
 
   worker:
-    image: ghcr.io/joasisk/orbis-api:latest
+    image: ghcr.io/joasisk/orbis-api:1e24fe6575361df9574176cc5df6953caf7c4191
     restart: unless-stopped
     command: python -m app.workers.main
     environment:
