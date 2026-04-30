@@ -73,7 +73,7 @@ class ProjectUpdate(BaseModel):
     area_id: str | None = None
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = None
-    status: str | None = Field(default=None, min_length=1, max_length=32) = None
+    status: str | None = Field(default=None, min_length=1, max_length=32)
     priority: int | None = Field(default=None, ge=0, le=10)
     urgency: int | None = Field(default=None, ge=0, le=10)
     deadline: datetime | None = None
