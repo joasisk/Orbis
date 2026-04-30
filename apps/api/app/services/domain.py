@@ -8,6 +8,24 @@ from sqlalchemy.orm import Session
 from app.models.domain import AreaOfLife, EntityVersion, Project, RecurringCommitment, Task, TaskDependency
 from app.models.user import User
 
+TASK_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "staged": {"primed", "scrubbed"},
+    "primed": {"in_flight", "holding", "scrubbed"},
+    "in_flight": {"holding", "mission_complete", "scrubbed"},
+    "holding": {"primed", "in_flight", "scrubbed"},
+    "mission_complete": set(),
+    "scrubbed": {"staged"},
+}
+
+TASK_STATUS_ACTION_TARGET: dict[str, str] = {
+    "prime": "primed",
+    "start": "in_flight",
+    "hold": "holding",
+    "complete": "mission_complete",
+    "scrub": "scrubbed",
+    "restage": "staged",
+}
+
 
 class DomainService:
     @staticmethod
@@ -190,7 +208,7 @@ class DomainService:
 
     @staticmethod
     def list_tasks(
-        db: Session, actor: User, project_id: str | None, status_value: str | None, priority: int | None, privacy: str | None
+        db: Session, actor: User, project_id: str | None, status_value: str | None, priority: str | None, privacy: str | None
     ) -> list[Task]:
         stmt: Select[tuple[Task]] = select(Task)
         if project_id:
@@ -235,6 +253,29 @@ class DomainService:
                 changes[key] = {"from": getattr(entity, key), "to": value}
                 setattr(entity, key, value)
         DomainService._log_version(db, entity.owner_user_id, "task", entity.id, actor.id, "update", changes)
+        db.commit()
+        db.refresh(entity)
+        return entity
+
+    @staticmethod
+    def transition_task_status(db: Session, actor: User, task_id: str, action: str) -> Task:
+        entity = DomainService.get_task(db, actor, task_id)
+        DomainService._ensure_owner_only(actor, entity.owner_user_id)
+        target_status = TASK_STATUS_ACTION_TARGET[action]
+        current_status = entity.status
+        allowed_targets = TASK_STATUS_TRANSITIONS.get(current_status, set())
+        if target_status not in allowed_targets:
+            raise HTTPException(status_code=422, detail="Invalid status transition")
+        entity.status = target_status
+        DomainService._log_version(
+            db,
+            entity.owner_user_id,
+            "task",
+            entity.id,
+            actor.id,
+            "status_transition",
+            {"status": {"from": current_status, "to": target_status}, "action": action},
+        )
         db.commit()
         db.refresh(entity)
         return entity

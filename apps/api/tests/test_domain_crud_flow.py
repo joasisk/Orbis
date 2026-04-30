@@ -104,8 +104,8 @@ def test_domain_crud_and_history_flow() -> None:
                 "description": "Exercise plan",
                 "is_private": False,
                 "visibility_scope": "shared",
-                "priority": 7,
-                "urgency": 6,
+                "priority": "major",
+                "urgency": "near",
             },
         )
         assert project_resp.status_code == 201
@@ -118,8 +118,8 @@ def test_domain_crud_and_history_flow() -> None:
                 "project_id": project_id,
                 "title": "Run 5k",
                 "notes": "Keep easy pace",
-                "priority": 8,
-                "urgency": 5,
+                "priority": "major",
+                "urgency": "planned",
                 "is_private": False,
                 "visibility_scope": "shared",
             },
@@ -130,12 +130,27 @@ def test_domain_crud_and_history_flow() -> None:
         update_task_resp = client.patch(
             f"/api/v1/tasks/{task_id}",
             headers=headers,
-            json={"status": "in_progress", "priority": 9},
+            json={"status": "in_flight", "priority": "core"},
         )
         assert update_task_resp.status_code == 200
-        assert update_task_resp.json()["status"] == "in_progress"
+        assert update_task_resp.json()["status"] == "staged"
 
-        task_list_resp = client.get("/api/v1/tasks", headers=headers, params={"project_id": project_id, "priority": 9})
+        transition_resp = client.post(
+            f"/api/v1/tasks/{task_id}/status-transition",
+            headers=headers,
+            json={"action": "prime"},
+        )
+        assert transition_resp.status_code == 200
+
+        start_resp = client.post(
+            f"/api/v1/tasks/{task_id}/status-transition",
+            headers=headers,
+            json={"action": "start"},
+        )
+        assert start_resp.status_code == 200
+        assert start_resp.json()["status"] == "in_flight"
+
+        task_list_resp = client.get("/api/v1/tasks", headers=headers, params={"project_id": project_id, "priority": "core"})
         assert task_list_resp.status_code == 200
         assert len(task_list_resp.json()) == 1
 
@@ -245,14 +260,14 @@ def test_domain_write_authorization_cycle_and_recurring_detail() -> None:
             f"/api/v1/tasks/{task_b_id}/spouse-influence",
             headers=spouse_headers,
             json={
-                "spouse_priority": 9,
-                "spouse_urgency": 8,
+                "spouse_priority": "core",
+                "spouse_urgency": "immediate",
                 "spouse_deadline": "2026-04-16T09:00:00Z",
                 "spouse_deadline_type": "hard",
             },
         )
         assert spouse_influence_resp.status_code == 200
-        assert spouse_influence_resp.json()["spouse_priority"] == 9
+        assert spouse_influence_resp.json()["spouse_priority"] == "core"
         assert spouse_influence_resp.json()["priority"] is None
         assert spouse_influence_resp.json()["spouse_deadline_type"] == "hard"
 
