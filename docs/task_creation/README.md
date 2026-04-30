@@ -12,6 +12,8 @@ This folder captures the implementation planning package for the task creation/e
    - Proposed commit slicing strategy with goals and file targets.
 4. `04_first_implementation_pass.md`
    - Step-by-step first coding pass with exact edit targets and diff intent.
+5. `05_gap_analysis.md`
+   - Current-state gap analysis of planned versus implemented task-creation changes.
 
 ## Scope
 
