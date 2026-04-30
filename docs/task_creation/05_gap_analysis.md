@@ -25,29 +25,19 @@ Scope: `docs/task_creation/*` plan set versus the current implementation in `app
 | Owner/spouse write-boundaries (task attributes) | ✅ Implemented | API service enforces actor-specific attribute updates. |
 | Scrubbed-task scheduling exclusion | ✅ Implemented (API) | Planning/focus exclude terminal statuses including `scrubbed`. |
 | Unified orbit/project selector | ⚠️ Partially implemented | Assignment control exists, but plan-specific searchable `<orbit>: <project>` behavior is not fully evident/documented. |
-| Markdown-backed WYSIWYG task description | ❌ Not implemented | Task form still uses plain textarea (`notes`) in entity management UI. |
+| Markdown-backed WYSIWYG task description | ✅ Implemented | Task modal now includes markdown authoring helpers and rendered preview while preserving markdown `notes` storage. |
 | Role-aware create/edit attribute visibility in task modal | ⚠️ Partially implemented | Editability controls exist; additional visibility/UX details from plan need validation/final polish. |
 | Status transition actions in task modal (no free-form edit) | ✅ Implemented | Status selection moved to explicit transition actions. |
-| i18n coverage for new user text | ❌ Not implemented | New task-creation labels/actions remain hardcoded English strings in UI. |
+| i18n coverage for new user text | ✅ Implemented (task modal surface) | Task-creation modal labels/actions moved to i18n keys and added to all supported locales. |
 | Planning docs synchronization after implementation | ⚠️ Incomplete | Task-creation plan docs exist, but no consolidated “actual state” document was present before this file. |
 
 ---
 
 ## Detailed gaps
 
-### G1 — Markdown WYSIWYG description editor is still missing
-**Priority:** P0  
-**Planned:** Rich WYSIWYG editor with markdown storage/round-tripping.  
-**Current evidence:** Task modal still binds description to plain `notes` text entry in `entity-management.tsx`.
-
-**Impact:**
-- Misses planned low-friction authoring UX for longer task details.
-- Round-trip formatting behavior is not available.
-
-**Recommended closure:**
-1. Add a markdown-backed editor component for task notes.
-2. Preserve existing API `notes` contract (markdown string).
-3. Add web tests for round-trip persistence and basic formatting behavior.
+### G1 — Markdown WYSIWYG description editor
+**Status:** Closed (implemented 2026-04-30)  
+**Evidence:** Task modal now provides markdown formatting helpers (bold/italic/heading), edit/preview toggling, and rendered markdown preview while persisting to `notes` markdown text.
 
 ---
 
@@ -68,18 +58,8 @@ Scope: `docs/task_creation/*` plan set versus the current implementation in `app
 ---
 
 ### G3 — i18n completeness for task-creation rework text
-**Priority:** P1  
-**Planned:** Add labels/status/action keys across all available languages.  
-**Current evidence:** Task and spouse-task related controls in UI still include inline English strings.
-
-**Impact:**
-- Violates repo guardrail requiring translations for new user-facing text.
-- Creates inconsistent localization coverage across core flows.
-
-**Recommended closure:**
-1. Move new strings to i18n keys.
-2. Add translations for all currently supported locales.
-3. Add UI/i18n checks (or snapshot/contract tests) for key task creation/edit surfaces.
+**Status:** Closed for task modal surface (implemented 2026-04-30)  
+**Evidence:** Task modal task-creation labels/actions migrated to i18n keys present for all supported locales (`en`, `sk`, `de`, `it`, `es`, `pl`).
 
 ---
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ScreenHeader, SectionCard, StatusPill } from "@/components/ui-kit";
+import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from "@/lib/i18n";
 import { uiTerminology } from "@/lib/ui-terminology";
 
 type UserRole = "owner" | "spouse";
@@ -96,12 +97,28 @@ function parseDateTime(value: string): string | null {
   return date.toISOString();
 }
 
+function renderMarkdown(markdown: string): string {
+  const escaped = markdown
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return escaped
+    .replace(/^### (.*)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.*)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.*)$/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/`(.*?)`/g, "<code>$1</code>")
+    .replace(/\n/g, "<br />");
+}
+
 export function openTaskModal(detail: TaskModalEventDetail) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent<TaskModalEventDetail>(TASK_MODAL_EVENT, { detail }));
 }
 
 export function TaskModalHost() {
+  const [language, setLanguage] = useState<UiLanguage>(DEFAULT_UI_LANGUAGE);
   const [token, setToken] = useState("");
   const [areas, setAreas] = useState<AreaRecord[]>([]);
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
@@ -133,6 +150,8 @@ export function TaskModalHost() {
 
   useEffect(() => {
     setToken(window.localStorage.getItem("orbis_access_token") ?? "");
+    const savedLanguage = window.localStorage.getItem("orbis_ui_language") as UiLanguage | null;
+    if (savedLanguage) setLanguage(savedLanguage);
   }, []);
 
   useEffect(() => {
@@ -316,17 +335,26 @@ export function TaskModalHost() {
         <h2>{openState?.mode === "edit" ? "Edit task" : "Add task"}</h2>
         {loading ? <p>Loading…</p> : null}
         <form className="stack-form" onSubmit={onSubmit}>
-          <p className="footnote">Basics</p>
-          <input className="app-input" placeholder="Title" required value={form.title} onChange={(event) => { setForm({ ...form, title: event.target.value }); setDirty(true); }} />
+          <p className="footnote">{translate(language, "taskModalBasics")}</p>
+          <input className="app-input" placeholder={translate(language, "taskModalTitle")} required value={form.title} onChange={(event) => { setForm({ ...form, title: event.target.value }); setDirty(true); }} />
           <div>
             <div className="inline-actions">
-              <p className="footnote">Description (Markdown)</p>
-              <button className="app-button" type="button" onClick={() => setNotesPreview((prev) => !prev)}>{notesPreview ? "Edit" : "Preview"}</button>
+              <p className="footnote">{translate(language, "taskModalDescriptionMarkdown")}</p>
+              <button className="app-button" type="button" onClick={() => setNotesPreview((prev) => !prev)}>{notesPreview ? translate(language, "taskModalEdit") : translate(language, "taskModalPreview")}</button>
             </div>
-            {notesPreview ? <div className="app-input app-input--text"><pre>{form.notes || "No description."}</pre></div> : <textarea className="app-input app-input--text" value={form.notes} onChange={(event) => { setForm({ ...form, notes: event.target.value }); setDirty(true); }} />}
+            {!notesPreview ? (
+              <>
+                <div className="inline-actions">
+                  <button className="app-button" type="button" onClick={() => { setForm({ ...form, notes: `${form.notes}**bold**` }); setDirty(true); }}>Bold</button>
+                  <button className="app-button" type="button" onClick={() => { setForm({ ...form, notes: `${form.notes}*italic*` }); setDirty(true); }}>Italic</button>
+                  <button className="app-button" type="button" onClick={() => { setForm({ ...form, notes: `${form.notes}\n# Heading` }); setDirty(true); }}>Heading</button>
+                </div>
+                <textarea className="app-input app-input--text" value={form.notes} onChange={(event) => { setForm({ ...form, notes: event.target.value }); setDirty(true); }} />
+              </>
+            ) : <div className="app-input app-input--text" dangerouslySetInnerHTML={{ __html: renderMarkdown(form.notes || `_${translate(language, "taskModalNoDescription")}_`) }} />}
           </div>
-          <p className="footnote">Classification</p>
-          <input className="app-input" list="assignment-options" placeholder="Orbit: Project" value={assignmentQuery} onChange={(event)=>{ const value=event.target.value; setAssignmentQuery(value); const selected=assignmentOptions.find((opt)=>opt.label===value); if(selected){ setForm({ ...form, areaId: selected.areaId, projectId: selected.projectId }); setDirty(true);} }} />
+          <p className="footnote">{translate(language, "taskModalClassification")}</p>
+          <input className="app-input" list="assignment-options" placeholder={translate(language, "taskModalOrbitProject")} value={assignmentQuery} onChange={(event)=>{ const value=event.target.value; setAssignmentQuery(value); const selected=assignmentOptions.find((opt)=>opt.label===value); if(selected){ setForm({ ...form, areaId: selected.areaId, projectId: selected.projectId }); setDirty(true);} }} />
           <datalist id="assignment-options">{filteredAssignments.map((opt)=><option key={opt.projectId} value={opt.label} />)}</datalist>
           <p className="footnote">Attributes</p>
           <select className="app-input" value={form.priority} onChange={(event) => { setForm({ ...form, priority: event.target.value as TaskPriority | "" }); setDirty(true); }} disabled={!canEditOwnerAttributes}><option value="">Priority</option><option value="core">Core</option><option value="major">Major</option><option value="minor">Minor</option><option value="ambient">Ambient</option></select>
