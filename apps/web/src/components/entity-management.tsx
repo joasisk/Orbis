@@ -21,12 +21,12 @@ type ProjectRecord = {
   name: string;
   description: string | null;
   status: string;
-  priority: number | null;
-  urgency: number | null;
+  priority: TaskPriority | null;
+  urgency: TaskUrgency | null;
   deadline: string | null;
   deadline_type: DeadlineType | null;
-  spouse_priority: number | null;
-  spouse_urgency: number | null;
+  spouse_priority: TaskPriority | null;
+  spouse_urgency: TaskUrgency | null;
   spouse_deadline: string | null;
   spouse_deadline_type: DeadlineType | null;
   is_private: boolean;
@@ -41,17 +41,20 @@ type TaskRecord = {
   title: string;
   notes: string | null;
   status: TaskStatus;
-  priority: number | null;
-  urgency: number | null;
+  priority: TaskPriority | null;
+  urgency: TaskUrgency | null;
   deadline: string | null;
   deadline_type: DeadlineType | null;
-  spouse_priority: number | null;
-  spouse_urgency: number | null;
+  spouse_priority: TaskPriority | null;
+  spouse_urgency: TaskUrgency | null;
   spouse_deadline: string | null;
   spouse_deadline_type: DeadlineType | null;
   is_private: boolean;
   visibility_scope: VisibilityScope;
 };
+
+type TaskPriority = "core" | "major" | "minor" | "ambient";
+type TaskUrgency = "immediate" | "near" | "planned" | "flexible";
 
 type TaskModalEventDetail = {
   mode: "create" | "edit";
@@ -102,6 +105,7 @@ export function TaskModalHost() {
   const [token, setToken] = useState("");
   const [areas, setAreas] = useState<AreaRecord[]>([]);
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [openState, setOpenState] = useState<TaskModalEventDetail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -113,14 +117,14 @@ export function TaskModalHost() {
     title: "",
     notes: "",
     status: "staged" as TaskStatus,
-    priority: EMPTY_PRIORITY,
-    urgency: EMPTY_PRIORITY,
+    priority: EMPTY_PRIORITY as TaskPriority | "",
+    urgency: EMPTY_PRIORITY as TaskUrgency | "",
     deadline: EMPTY_DEADLINE,
     deadlineType: "",
     isPrivate: false,
     visibilityScope: "shared" as VisibilityScope,
-    spousePriority: EMPTY_PRIORITY,
-    spouseUrgency: EMPTY_PRIORITY,
+    spousePriority: EMPTY_PRIORITY as TaskPriority | "",
+    spouseUrgency: EMPTY_PRIORITY as TaskUrgency | "",
     spouseDeadline: EMPTY_DEADLINE,
     spouseDeadlineType: "",
   });
@@ -149,19 +153,22 @@ export function TaskModalHost() {
       setLoading(true);
       setError("");
 
-      const [areasResponse, projectsResponse] = await Promise.all([
+      const [areasResponse, projectsResponse, meResponse] = await Promise.all([
         fetch(`${defaultApiBase}/areas`, { headers: headers(token), cache: "no-store" }),
         fetch(`${defaultApiBase}/projects`, { headers: headers(token), cache: "no-store" }),
+        fetch(`${defaultApiBase}/users/me`, { headers: headers(token), cache: "no-store" }),
       ]);
 
-      if (!areasResponse.ok || !projectsResponse.ok) {
-        setError("Could not load area/project options.");
+      if (!areasResponse.ok || !projectsResponse.ok || !meResponse.ok) {
+        setError("Could not load task modal data.");
         setLoading(false);
         return;
       }
 
       const loadedAreas = (await areasResponse.json()) as AreaRecord[];
       const loadedProjects = (await projectsResponse.json()) as ProjectRecord[];
+      const mePayload = (await meResponse.json()) as { role: UserRole };
+      setRole(mePayload.role);
       setAreas(loadedAreas);
       setProjects(loadedProjects);
 
@@ -171,14 +178,14 @@ export function TaskModalHost() {
         title: "",
         notes: "",
         status: "staged" as TaskStatus,
-        priority: EMPTY_PRIORITY,
-        urgency: EMPTY_PRIORITY,
+        priority: EMPTY_PRIORITY as TaskPriority | "",
+        urgency: EMPTY_PRIORITY as TaskUrgency | "",
         deadline: EMPTY_DEADLINE,
         deadlineType: "",
         isPrivate: false,
         visibilityScope: "shared" as VisibilityScope,
-        spousePriority: EMPTY_PRIORITY,
-        spouseUrgency: EMPTY_PRIORITY,
+        spousePriority: EMPTY_PRIORITY as TaskPriority | "",
+        spouseUrgency: EMPTY_PRIORITY as TaskUrgency | "",
         spouseDeadline: EMPTY_DEADLINE,
         spouseDeadlineType: "",
       };
@@ -197,14 +204,14 @@ export function TaskModalHost() {
         nextForm.title = task.title;
         nextForm.notes = task.notes ?? "";
         nextForm.status = task.status;
-        nextForm.priority = task.priority?.toString() ?? EMPTY_PRIORITY;
-        nextForm.urgency = task.urgency?.toString() ?? EMPTY_PRIORITY;
+        nextForm.priority = task.priority ?? EMPTY_PRIORITY;
+        nextForm.urgency = task.urgency ?? EMPTY_PRIORITY;
         nextForm.deadline = toDateTimeInput(task.deadline);
         nextForm.deadlineType = task.deadline_type ?? "";
         nextForm.isPrivate = task.is_private;
         nextForm.visibilityScope = task.visibility_scope;
-        nextForm.spousePriority = task.spouse_priority?.toString() ?? EMPTY_PRIORITY;
-        nextForm.spouseUrgency = task.spouse_urgency?.toString() ?? EMPTY_PRIORITY;
+        nextForm.spousePriority = task.spouse_priority ?? EMPTY_PRIORITY;
+        nextForm.spouseUrgency = task.spouse_urgency ?? EMPTY_PRIORITY;
         nextForm.spouseDeadline = toDateTimeInput(task.spouse_deadline);
         nextForm.spouseDeadlineType = task.spouse_deadline_type ?? "";
       }
@@ -235,16 +242,26 @@ export function TaskModalHost() {
   }, [dirty, open]);
 
   const [assignmentQuery, setAssignmentQuery] = useState("");
+  const [debouncedAssignmentQuery, setDebouncedAssignmentQuery] = useState("");
+  const [notesPreview, setNotesPreview] = useState(false);
+  const isOwner = role === "owner";
+  const canEditOwnerAttributes = role !== "spouse";
+  const canEditSpouseAttributes = role === "spouse";
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedAssignmentQuery(assignmentQuery), 150);
+    return () => window.clearTimeout(timeout);
+  }, [assignmentQuery]);
   const assignmentOptions = useMemo(() => projects.map((project) => ({
     projectId: project.id,
     areaId: project.area_id,
     label: `${areas.find((a)=>a.id===project.area_id)?.name ?? "Unknown orbit"}: ${project.name}`
   })), [projects, areas]);
   const filteredAssignments = useMemo(() => {
-    const q = assignmentQuery.trim().toLowerCase();
+    const q = debouncedAssignmentQuery.trim().toLowerCase();
     if (!q) return assignmentOptions;
     return assignmentOptions.filter((opt) => opt.label.toLowerCase().includes(q));
-  }, [assignmentOptions, assignmentQuery]);
+  }, [assignmentOptions, debouncedAssignmentQuery]);
 
   function closeModal() {
     if (dirty && !window.confirm("Discard task changes?")) return;
@@ -299,35 +316,48 @@ export function TaskModalHost() {
         <h2>{openState?.mode === "edit" ? "Edit task" : "Add task"}</h2>
         {loading ? <p>Loading…</p> : null}
         <form className="stack-form" onSubmit={onSubmit}>
+          <p className="footnote">Basics</p>
           <input className="app-input" placeholder="Title" required value={form.title} onChange={(event) => { setForm({ ...form, title: event.target.value }); setDirty(true); }} />
-          <textarea className="app-input app-input--text" placeholder="Description (Markdown supported)" value={form.notes} onChange={(event) => { setForm({ ...form, notes: event.target.value }); setDirty(true); }} />
+          <div>
+            <div className="inline-actions">
+              <p className="footnote">Description (Markdown)</p>
+              <button className="app-button" type="button" onClick={() => setNotesPreview((prev) => !prev)}>{notesPreview ? "Edit" : "Preview"}</button>
+            </div>
+            {notesPreview ? <div className="app-input app-input--text"><pre>{form.notes || "No description."}</pre></div> : <textarea className="app-input app-input--text" value={form.notes} onChange={(event) => { setForm({ ...form, notes: event.target.value }); setDirty(true); }} />}
+          </div>
+          <p className="footnote">Classification</p>
           <input className="app-input" list="assignment-options" placeholder="Orbit: Project" value={assignmentQuery} onChange={(event)=>{ const value=event.target.value; setAssignmentQuery(value); const selected=assignmentOptions.find((opt)=>opt.label===value); if(selected){ setForm({ ...form, areaId: selected.areaId, projectId: selected.projectId }); setDirty(true);} }} />
           <datalist id="assignment-options">{filteredAssignments.map((opt)=><option key={opt.projectId} value={opt.label} />)}</datalist>
-          <select className="app-input" value={form.priority} onChange={(event) => { setForm({ ...form, priority: event.target.value }); setDirty(true); }}><option value="">Priority</option><option value="core">Core</option><option value="major">Major</option><option value="minor">Minor</option><option value="ambient">Ambient</option></select>
-          <select className="app-input" value={form.urgency} onChange={(event) => { setForm({ ...form, urgency: event.target.value }); setDirty(true); }}><option value="">Urgency</option><option value="immediate">Immediate</option><option value="near">Near</option><option value="planned">Planned</option><option value="flexible">Flexible</option></select>
-          <input className="app-input" type="datetime-local" value={form.deadline} onChange={(event) => { setForm({ ...form, deadline: event.target.value }); setDirty(true); }} />
-          <select className="app-input" value={form.deadlineType} onChange={(event) => { setForm({ ...form, deadlineType: event.target.value }); setDirty(true); }}>
+          <p className="footnote">Attributes</p>
+          <select className="app-input" value={form.priority} onChange={(event) => { setForm({ ...form, priority: event.target.value as TaskPriority | "" }); setDirty(true); }} disabled={!canEditOwnerAttributes}><option value="">Priority</option><option value="core">Core</option><option value="major">Major</option><option value="minor">Minor</option><option value="ambient">Ambient</option></select>
+          <select className="app-input" value={form.urgency} onChange={(event) => { setForm({ ...form, urgency: event.target.value as TaskUrgency | "" }); setDirty(true); }} disabled={!canEditOwnerAttributes}><option value="">Urgency</option><option value="immediate">Immediate</option><option value="near">Near</option><option value="planned">Planned</option><option value="flexible">Flexible</option></select>
+          <select className="app-input" value={form.deadlineType} onChange={(event) => { setForm({ ...form, deadlineType: event.target.value }); setDirty(true); }} disabled={!canEditOwnerAttributes}>
             <option value="">No deadline type</option>
             <option value="soft">Soft</option>
             <option value="hard">Hard</option>
           </select>
+          <input className="app-input" type="datetime-local" value={form.deadline} onChange={(event) => { setForm({ ...form, deadline: event.target.value }); setDirty(true); }} disabled={!canEditOwnerAttributes} />
           <label className="app-check">
-            <input type="checkbox" checked={form.isPrivate} onChange={(event) => { setForm({ ...form, isPrivate: event.target.checked, visibilityScope: event.target.checked ? "owner" : form.visibilityScope }); setDirty(true); }} />
+            <input type="checkbox" checked={form.isPrivate} disabled={!canEditOwnerAttributes} onChange={(event) => { setForm({ ...form, isPrivate: event.target.checked, visibilityScope: event.target.checked ? "owner" : form.visibilityScope }); setDirty(true); }} />
             Private task
           </label>
-          <select className="app-input" value={form.visibilityScope} onChange={(event) => { setForm({ ...form, visibilityScope: event.target.value as VisibilityScope }); setDirty(true); }} disabled={form.isPrivate}>
+          <select className="app-input" value={form.visibilityScope} onChange={(event) => { setForm({ ...form, visibilityScope: event.target.value as VisibilityScope }); setDirty(true); }} disabled={form.isPrivate || !canEditOwnerAttributes}>
             <option value="owner">Owner</option>
             <option value="spouse">Spouse</option>
             <option value="shared">Shared</option>
           </select>
-          <input className="app-input" type="number" min="0" max="10" placeholder="Spouse priority" value={form.spousePriority} onChange={(event) => { setForm({ ...form, spousePriority: event.target.value }); setDirty(true); }} />
-          <input className="app-input" type="number" min="0" max="10" placeholder="Spouse urgency" value={form.spouseUrgency} onChange={(event) => { setForm({ ...form, spouseUrgency: event.target.value }); setDirty(true); }} />
-          <input className="app-input" type="datetime-local" value={form.spouseDeadline} onChange={(event) => { setForm({ ...form, spouseDeadline: event.target.value }); setDirty(true); }} />
-          <select className="app-input" value={form.spouseDeadlineType} onChange={(event) => { setForm({ ...form, spouseDeadlineType: event.target.value }); setDirty(true); }}>
+          {openState?.mode === "edit" || !isOwner ? (
+            <>
+              <input className="app-input" placeholder="Spouse priority" value={form.spousePriority} onChange={(event) => { setForm({ ...form, spousePriority: event.target.value as TaskPriority | "" }); setDirty(true); }} disabled={!canEditSpouseAttributes} />
+              <input className="app-input" placeholder="Spouse urgency" value={form.spouseUrgency} onChange={(event) => { setForm({ ...form, spouseUrgency: event.target.value as TaskUrgency | "" }); setDirty(true); }} disabled={!canEditSpouseAttributes} />
+              <input className="app-input" type="datetime-local" value={form.spouseDeadline} onChange={(event) => { setForm({ ...form, spouseDeadline: event.target.value }); setDirty(true); }} disabled={!canEditSpouseAttributes} />
+              <select className="app-input" value={form.spouseDeadlineType} onChange={(event) => { setForm({ ...form, spouseDeadlineType: event.target.value }); setDirty(true); }} disabled={!canEditSpouseAttributes}>
             <option value="">No spouse deadline type</option>
             <option value="soft">Soft</option>
             <option value="hard">Hard</option>
           </select>
+            </>
+          ) : null}
           <div className="modal-actions">
             <button className="app-button" type="button" onClick={closeModal}>Cancel</button>
             <button className="app-button app-button--primary" type="submit">{openState?.mode === "edit" ? "Save" : "Create"}</button>
