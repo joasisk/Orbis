@@ -7,6 +7,8 @@ DeadlineType = Literal["soft", "hard"]
 VisibilityScope = Literal["owner", "spouse", "shared"]
 Cadence = Literal["daily", "weekly", "monthly"]
 TaskStatus = Literal["staged", "primed", "in_flight", "holding", "mission_complete", "scrubbed"]
+TaskPriority = Literal["core", "major", "minor", "ambient"]
+TaskUrgency = Literal["immediate", "near", "planned", "flexible"]
 
 
 class VersionResponse(BaseModel):
@@ -40,12 +42,12 @@ class AreaRead(AreaBase):
 
 
 class PrioritizedFields(BaseModel):
-    priority: int | None = Field(default=None, ge=0, le=10)
-    urgency: int | None = Field(default=None, ge=0, le=10)
+    priority: TaskPriority | None = None
+    urgency: TaskUrgency | None = None
     deadline: datetime | None = None
     deadline_type: DeadlineType | None = None
-    spouse_priority: int | None = Field(default=None, ge=0, le=10)
-    spouse_urgency: int | None = Field(default=None, ge=0, le=10)
+    spouse_priority: TaskPriority | None = None
+    spouse_urgency: TaskUrgency | None = None
     spouse_deadline: datetime | None = None
     spouse_deadline_type: DeadlineType | None = None
     is_private: bool = False
@@ -74,12 +76,12 @@ class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = None
     status: str | None = Field(default=None, min_length=1, max_length=32)
-    priority: int | None = Field(default=None, ge=0, le=10)
-    urgency: int | None = Field(default=None, ge=0, le=10)
+    priority: TaskPriority | None = None
+    urgency: TaskUrgency | None = None
     deadline: datetime | None = None
     deadline_type: DeadlineType | None = None
-    spouse_priority: int | None = Field(default=None, ge=0, le=10)
-    spouse_urgency: int | None = Field(default=None, ge=0, le=10)
+    spouse_priority: TaskPriority | None = None
+    spouse_urgency: TaskUrgency | None = None
     spouse_deadline: datetime | None = None
     spouse_deadline_type: DeadlineType | None = None
     is_private: bool | None = None
@@ -108,13 +110,12 @@ class TaskUpdate(BaseModel):
     project_id: str | None = None
     title: str | None = Field(default=None, min_length=1, max_length=200)
     notes: str | None = None
-    status: TaskStatus | None = None
-    priority: int | None = Field(default=None, ge=0, le=10)
-    urgency: int | None = Field(default=None, ge=0, le=10)
+    priority: TaskPriority | None = None
+    urgency: TaskUrgency | None = None
     deadline: datetime | None = None
     deadline_type: DeadlineType | None = None
-    spouse_priority: int | None = Field(default=None, ge=0, le=10)
-    spouse_urgency: int | None = Field(default=None, ge=0, le=10)
+    spouse_priority: TaskPriority | None = None
+    spouse_urgency: TaskUrgency | None = None
     spouse_deadline: datetime | None = None
     spouse_deadline_type: DeadlineType | None = None
     is_private: bool | None = None
@@ -122,8 +123,8 @@ class TaskUpdate(BaseModel):
 
 
 class TaskSpouseInfluenceUpdate(BaseModel):
-    spouse_priority: int | None = Field(default=None, ge=0, le=10)
-    spouse_urgency: int | None = Field(default=None, ge=0, le=10)
+    spouse_priority: TaskPriority | None = None
+    spouse_urgency: TaskUrgency | None = None
     spouse_deadline: datetime | None = None
     spouse_deadline_type: DeadlineType | None = None
 
@@ -189,3 +190,7 @@ class TaskDependencyRead(BaseModel):
     task_id: str
     depends_on_task_id: str
     created_at: datetime
+
+
+class TaskStatusTransition(BaseModel):
+    action: Literal["prime", "start", "hold", "complete", "scrub", "restage"]

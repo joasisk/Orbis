@@ -19,6 +19,7 @@ from app.schemas.domain import (
     TaskDependencyRead,
     TaskRead,
     TaskSpouseInfluenceUpdate,
+    TaskStatusTransition,
     TaskUpdate,
     VersionResponse,
 )
@@ -115,7 +116,7 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db), current_user
 def list_tasks(
     project_id: str | None = None,
     status_value: str | None = Query(default=None, alias="status"),
-    priority: int | None = Query(default=None, ge=0, le=10),
+    priority: str | None = Query(default=None, pattern="^(core|major|minor|ambient)$"),
     privacy: str | None = Query(default=None, pattern="^(private|public)$"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -138,6 +139,17 @@ def update_task(
     current_user: User = Depends(get_current_user),
 ) -> TaskRead:
     row = DomainService.update_task(db, current_user, task_id, payload.model_dump(exclude_unset=True))
+    return TaskRead.model_validate(row, from_attributes=True)
+
+
+@router.post("/tasks/{task_id}/status-transition", response_model=TaskRead)
+def transition_task_status(
+    task_id: str,
+    payload: TaskStatusTransition,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TaskRead:
+    row = DomainService.transition_task_status(db, current_user, task_id, payload.action)
     return TaskRead.model_validate(row, from_attributes=True)
 
 
