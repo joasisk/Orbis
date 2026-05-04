@@ -41,6 +41,38 @@ function mondayIso(baseDate: Date) {
   return normalized.toISOString().slice(0, 10);
 }
 
+export function formatProposalStatus(status: WeeklyProposal["status"]): string {
+  if (status === "proposed") return "Awaiting review";
+  if (status === "approved") return "Approved";
+  return "Rejected";
+}
+
+export function formatProposalTaskTitle(taskId: string): string {
+  return `Task ${taskId.slice(0, 8)}`;
+}
+
+export function formatProposalReason(rationale: string): string {
+  return rationale
+    .split("_")
+    .filter(Boolean)
+    .map((part, idx) => {
+      if (/^\d+$/.test(part) && idx > 0 && ["priority", "minutes", "rank"].includes(rationale.split("_")[idx - 1])) {
+        return `#${part}`;
+      }
+      return part;
+    })
+    .join(" ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function formatDurationSummary(minutes: number): string {
+  if (minutes < 60) return `${minutes} minutes`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  if (!remaining) return `${hours}h`;
+  return `${hours}h ${remaining}m`;
+}
+
 export function ScheduleDashboard() {
   const [token, setToken] = useState("");
   const [weekDate, setWeekDate] = useState(mondayIso(new Date()));
@@ -211,18 +243,28 @@ export function ScheduleDashboard() {
       <SectionCard title={translate(language, "weeklyProposalTitle")} tone="accent">
         <p>{translate(language, "weeklyProposalGuardrail")}</p>
         <div className="button-row">
-          <button className="app-button" type="button" onClick={loadLatestProposal}>{translate(language, "weeklyProposalLoadLatest")}</button>
-          <button className="app-button app-button--primary" type="button" onClick={generateProposal}>{proposalLoading ? "..." : translate(language, "weeklyProposalGenerate")}</button>
-          <button className="app-button app-button--secondary" type="button" onClick={approveProposal} disabled={!proposal || proposal.status !== "proposed"}>{translate(language, "weeklyProposalApprove")}</button>
+          <button className="app-button app-button--secondary" type="button" onClick={loadLatestProposal} disabled={proposalLoading}>{translate(language, "weeklyProposalLoadLatest")}</button>
+          <button className="app-button" type="button" onClick={generateProposal} disabled={proposalLoading}>{proposalLoading ? "..." : proposal ? translate(language, "weeklyProposalRegenerate") : translate(language, "weeklyProposalGenerate")}</button>
+          <button className="app-button app-button--primary" type="button" onClick={approveProposal} disabled={!proposal || proposal.status !== "proposed"}>{translate(language, "weeklyProposalApprove")}</button>
         </div>
-        {proposal ? (
-          <ul className="stack-list">
-            <li><strong>{translate(language, "statusLabel")}:</strong> {proposal.status}</li>
-            {proposal.items.map((item) => (
-              <li key={item.id}>#{item.rank} · {item.suggested_day} · {item.suggested_minutes}m · {item.rationale}</li>
-            ))}
-          </ul>
-        ) : <EmptyState message={translate(language, "weeklyProposalEmpty")} />}
+        {proposalLoading ? <EmptyState message={translate(language, "weeklyProposalLoading")} /> : null}
+        {!proposalLoading && proposal ? (
+          <div className="stack-list">
+            <article className="day-card">
+              <p><strong>{translate(language, "statusLabel")}:</strong> {formatProposalStatus(proposal.status)}</p>
+              <p><strong>{translate(language, "weeklyProposalWeekOf")}:</strong> {proposal.week_start_date}</p>
+            </article>
+            {proposal.items.length ? proposal.items.map((item) => (
+              <article className="day-card" key={item.id}>
+                <p><strong>{formatProposalTaskTitle(item.task_id)}</strong></p>
+                <p>{translate(language, "weeklyProposalItemRank")} #{item.rank}</p>
+                <p>{item.suggested_day} · {formatDurationSummary(item.suggested_minutes)}</p>
+                <p>{formatProposalReason(item.rationale)}</p>
+              </article>
+            )) : <EmptyState message={translate(language, "weeklyProposalNoItems")} />}
+          </div>
+        ) : null}
+        {!proposalLoading && !proposal ? <EmptyState message={translate(language, "weeklyProposalEmpty")} /> : null}
       </SectionCard>
 
       <SectionCard title={translate(language, "noteExtractionTitle")}>
