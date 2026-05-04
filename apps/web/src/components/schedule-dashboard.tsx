@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { EmptyState, ScreenHeader, SectionCard, StatusPill } from "@/components/ui-kit";
 import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from "@/lib/i18n";
 
@@ -21,7 +22,7 @@ type WeeklyProposal = {
   id: string;
   week_start_date: string;
   status: "proposed" | "approved" | "rejected" | "generated" | "draft";
-  items: Array<{ id: string; task_id: string; suggested_day: string; suggested_minutes: number; rationale: string; rank: number }>;
+  items: Array<{ id: string; task_id: string; task_title?: string | null; suggested_day: string; suggested_date?: string | null; suggested_minutes: number; rationale: string; rank: number }>;
 };
 type NoteExtraction = {
   id: string;
@@ -48,7 +49,8 @@ export function formatProposalStatus(status: WeeklyProposal["status"]): string {
   return status.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function formatProposalTaskTitle(taskId: string): string {
+export function formatProposalTaskTitle(taskId: string, taskTitle?: string | null): string {
+  if (taskTitle && taskTitle.trim()) return taskTitle.trim();
   if (taskId.startsWith("ranked_for_weekly_plan")) return "Priority planning task";
   return `Task ${taskId.slice(0, 8)}`;
 }
@@ -82,6 +84,11 @@ function parseDurationMinutes(value: number | string): number {
 
 export function getTotalDurationMinutes(items: WeeklyProposal["items"]): number {
   return items.reduce((sum, item) => sum + parseDurationMinutes(item.suggested_minutes), 0);
+}
+
+function formatSuggestedDayLabel(suggestedDay: string, suggestedDate?: string | null): string {
+  if (suggestedDate) return new Date(`${suggestedDate}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return suggestedDay.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export function ScheduleDashboard() {
@@ -279,9 +286,9 @@ export function ScheduleDashboard() {
           <div className="stack-list">
             {proposal.items.length ? proposal.items.map((item) => (
               <article className="weekly-proposal-item" key={item.id}>
-                <span className="weekly-proposal-item__day">{new Date(`${item.suggested_day}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}</span>
+                <span className="weekly-proposal-item__day">{formatSuggestedDayLabel(item.suggested_day, item.suggested_date)}</span>
                 <div>
-                  <p><strong>{formatProposalTaskTitle(item.task_id)}</strong></p>
+                  <p><strong><Link href={`/tasks/${item.task_id}`}>{formatProposalTaskTitle(item.task_id, item.task_title)}</Link></strong></p>
                   <p>{formatDurationSummary(item.suggested_minutes)} · {formatProposalReason(item.rationale)}</p>
                 </div>
               </article>
