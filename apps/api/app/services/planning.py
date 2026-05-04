@@ -227,7 +227,9 @@ class PlanningService:
     @staticmethod
     def _proposal_response(db: Session, proposal: WeeklyPlanProposal, items: list[WeeklyPlanItem]) -> WeeklyPlanProposalResponse:
         week_start = date.fromisoformat(proposal.week_start_date)
-        week_by_label = {(week_start + timedelta(days=offset)).strftime("%A").lower(): week_start + timedelta(days=offset) for offset in range(7)}
+        week_by_label = {
+            (week_start + timedelta(days=offset)).strftime("%A").lower(): week_start + timedelta(days=offset) for offset in range(7)
+        }
         task_ids = [item.task_id for item in items]
         db_tasks = list(db.scalars(select(Task).where(Task.id.in_(task_ids))).all()) if task_ids else []
         tasks = {task.id: task for task in db_tasks}
