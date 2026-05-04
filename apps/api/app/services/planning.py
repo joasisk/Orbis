@@ -94,7 +94,7 @@ class PlanningService:
         for item in items:
             db.refresh(item)
 
-        return PlanningService._proposal_response(proposal, items)
+        return PlanningService._proposal_response(db, proposal, items)
 
     @staticmethod
     def get_latest_weekly_proposal(db: Session, actor: User) -> WeeklyPlanProposalResponse:
@@ -114,7 +114,7 @@ class PlanningService:
                 .order_by(WeeklyPlanItem.rank.asc(), WeeklyPlanItem.created_at.asc())
             ).all()
         )
-        return PlanningService._proposal_response(proposal, items)
+        return PlanningService._proposal_response(db, proposal, items)
 
     @staticmethod
     def approve_weekly_proposal(
@@ -152,7 +152,7 @@ class PlanningService:
         for item in items:
             db.refresh(item)
 
-        return PlanningService._proposal_response(proposal, items)
+        return PlanningService._proposal_response(db, proposal, items)
 
     @staticmethod
     def preview_note_extraction(
@@ -225,7 +225,12 @@ class PlanningService:
         return PlanningService._extraction_response(extraction)
 
     @staticmethod
-    def _proposal_response(proposal: WeeklyPlanProposal, items: list[WeeklyPlanItem]) -> WeeklyPlanProposalResponse:
+    def _proposal_response(db: Session, proposal: WeeklyPlanProposal, items: list[WeeklyPlanItem]) -> WeeklyPlanProposalResponse:
+        week_start = date.fromisoformat(proposal.week_start_date)
+        week_by_label = {(week_start + timedelta(days=offset)).strftime("%A").lower(): week_start + timedelta(days=offset) for offset in range(7)}
+        task_ids = [item.task_id for item in items]
+        db_tasks = list(db.scalars(select(Task).where(Task.id.in_(task_ids))).all()) if task_ids else []
+        tasks = {task.id: task for task in db_tasks}
         return WeeklyPlanProposalResponse(
             id=proposal.id,
             week_start_date=proposal.week_start_date,
@@ -239,7 +244,9 @@ class PlanningService:
                 WeeklyPlanItemResponse(
                     id=item.id,
                     task_id=item.task_id,
+                    task_title=tasks.get(item.task_id).title if tasks.get(item.task_id) else None,
                     suggested_day=item.suggested_day,
+                    suggested_date=week_by_label.get(item.suggested_day.lower()),
                     suggested_minutes=item.suggested_minutes,
                     rationale=item.rationale,
                     rank=item.rank,

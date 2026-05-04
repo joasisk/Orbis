@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { EmptyState, ScreenHeader, SectionCard, StatusPill } from "@/components/ui-kit";
 import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from "@/lib/i18n";
 
@@ -20,8 +21,8 @@ type WeeklySchedule = {
 type WeeklyProposal = {
   id: string;
   week_start_date: string;
-  status: "proposed" | "approved" | "rejected";
-  items: Array<{ id: string; task_id: string; suggested_day: string; suggested_minutes: number; rationale: string; rank: number }>;
+  status: "proposed" | "approved" | "rejected" | "generated" | "draft";
+  items: Array<{ id: string; task_id: string; task_title?: string | null; suggested_day: string; suggested_date?: string | null; suggested_minutes: number; rationale: string; rank: number }>;
 };
 type NoteExtraction = {
   id: string;
@@ -39,6 +40,55 @@ function mondayIso(baseDate: Date) {
   const weekday = normalized.getUTCDay() || 7;
   normalized.setUTCDate(normalized.getUTCDate() - weekday + 1);
   return normalized.toISOString().slice(0, 10);
+}
+
+export function formatProposalStatus(status: WeeklyProposal["status"]): string {
+  if (status === "proposed") return "Awaiting review";
+  if (status === "approved") return "Approved";
+  if (status === "generated" || status === "draft") return "Draft ready";
+  return status.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function formatProposalTaskTitle(taskId: string, taskTitle?: string | null): string {
+  if (taskTitle && taskTitle.trim()) return taskTitle.trim();
+  if (taskId.startsWith("ranked_for_weekly_plan")) return "Priority planning task";
+  return `Task ${taskId.slice(0, 8)}`;
+}
+
+export function formatProposalReason(rationale: string): string {
+  if (!rationale || rationale.startsWith("ranked_for_weekly_plan")) return "Suggested because it matches your weekly priorities.";
+  const rationaleParts = rationale.split("_");
+  return rationaleParts
+    .filter(Boolean)
+    .map((part, idx) => (/^\d+$/.test(part) && idx > 0 && ["priority", "minutes", "rank"].includes(rationaleParts[idx - 1]) ? `#${part}` : part))
+    .join(" ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function formatDurationSummary(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  if (!remaining) return `${hours} hour${hours > 1 ? "s" : ""}`;
+  return `${hours}h ${remaining}m`;
+}
+
+function parseDurationMinutes(value: number | string): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const normalized = value.trim().toLowerCase();
+  const exact = Number(normalized);
+  if (!Number.isNaN(exact)) return exact;
+  const match = normalized.match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
+export function getTotalDurationMinutes(items: WeeklyProposal["items"]): number {
+  return items.reduce((sum, item) => sum + parseDurationMinutes(item.suggested_minutes), 0);
+}
+
+function formatSuggestedDayLabel(suggestedDay: string, suggestedDate?: string | null): string {
+  if (suggestedDate) return new Date(`${suggestedDate}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return suggestedDay.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export function ScheduleDashboard() {
@@ -93,6 +143,12 @@ export function ScheduleDashboard() {
     void loadWeek();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, weekDate]);
+
+  useEffect(() => {
+    if (!token || proposal || proposalLoading) return;
+    void loadLatestProposal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   async function generateProposal() {
     if (!token || proposalLoading) return;
@@ -209,20 +265,37 @@ export function ScheduleDashboard() {
         ) : <EmptyState message="Pick a Burn to inspect details." />}
       </SectionCard>
       <SectionCard title={translate(language, "weeklyProposalTitle")} tone="accent">
-        <p>{translate(language, "weeklyProposalGuardrail")}</p>
-        <div className="button-row">
-          <button className="app-button" type="button" onClick={loadLatestProposal}>{translate(language, "weeklyProposalLoadLatest")}</button>
-          <button className="app-button app-button--primary" type="button" onClick={generateProposal}>{proposalLoading ? "..." : translate(language, "weeklyProposalGenerate")}</button>
-          <button className="app-button app-button--secondary" type="button" onClick={approveProposal} disabled={!proposal || proposal.status !== "proposed"}>{translate(language, "weeklyProposalApprove")}</button>
-        </div>
-        {proposal ? (
-          <ul className="stack-list">
-            <li><strong>{translate(language, "statusLabel")}:</strong> {proposal.status}</li>
-            {proposal.items.map((item) => (
-              <li key={item.id}>#{item.rank} · {item.suggested_day} · {item.suggested_minutes}m · {item.rationale}</li>
-            ))}
-          </ul>
-        ) : <EmptyState message={translate(language, "weeklyProposalEmpty")} />}
+        <section className="weekly-proposal-card" aria-live="polite">
+          <header className="weekly-proposal-card__header">
+            <div>
+              <h3>{translate(language, "weeklyProposalTitle")}</h3>
+              <p>{translate(language, "weeklyProposalGuardrail")}</p>
+            </div>
+            <StatusPill label={formatProposalStatus(proposal?.status ?? "draft")} />
+          </header>
+          <div className="button-row weekly-proposal-card__actions">
+            <button className="app-button app-button--primary" type="button" onClick={approveProposal} disabled={!proposal || proposal.status !== "proposed"}>{translate(language, "weeklyProposalApprove")}</button>
+            <button className="app-button app-button--secondary" type="button" disabled>{translate(language, "weeklyProposalEdit")}</button>
+            <button className="app-button" type="button" onClick={generateProposal} disabled={proposalLoading}>{proposalLoading ? "..." : proposal ? translate(language, "weeklyProposalRegenerate") : translate(language, "weeklyProposalGenerate")}</button>
+            <button className="app-button app-button--ghost" type="button" onClick={loadLatestProposal} disabled={proposalLoading}>{translate(language, "weeklyProposalLoadLatest")}</button>
+          </div>
+        </section>
+        {proposal ? <div className="weekly-proposal-summary"><span>{proposal.items.length} {translate(language, "weeklyProposalSuggestedSessions")}</span><span>{formatDurationSummary(getTotalDurationMinutes(proposal.items))} {translate(language, "weeklyProposalTotal")}</span></div> : null}
+        {proposalLoading ? <EmptyState message={translate(language, "weeklyProposalLoading")} /> : null}
+        {!proposalLoading && proposal ? (
+          <div className="stack-list">
+            {proposal.items.length ? proposal.items.map((item) => (
+              <article className="weekly-proposal-item" key={item.id}>
+                <span className="weekly-proposal-item__day">{formatSuggestedDayLabel(item.suggested_day, item.suggested_date)}</span>
+                <div>
+                  <p><strong><Link href={`/tasks/${item.task_id}`}>{formatProposalTaskTitle(item.task_id, item.task_title)}</Link></strong></p>
+                  <p>{formatDurationSummary(item.suggested_minutes)} · {formatProposalReason(item.rationale)}</p>
+                </div>
+              </article>
+            )) : <EmptyState message={translate(language, "weeklyProposalNoItems")} />}
+          </div>
+        ) : null}
+        {!proposalLoading && !proposal ? <EmptyState message={translate(language, "weeklyProposalEmpty")} /> : null}
       </SectionCard>
 
       <SectionCard title={translate(language, "noteExtractionTitle")}>

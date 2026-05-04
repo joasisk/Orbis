@@ -14,7 +14,9 @@ NoteExtractionDecision = Literal["accept", "dismiss"]
 class WeeklyPlanItemResponse(BaseModel):
     id: str
     task_id: str
+    task_title: str | None = None
     suggested_day: str
+    suggested_date: date | None = None
     suggested_minutes: int
     rationale: str
     rank: int
