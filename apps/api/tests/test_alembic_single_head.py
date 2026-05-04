@@ -4,7 +4,6 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 
-
 def test_alembic_has_single_head() -> None:
     alembic_ini = Path(__file__).resolve().parents[1] / "alembic.ini"
     config = Config(str(alembic_ini))
