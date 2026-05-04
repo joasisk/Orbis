@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 DeadlineType = Literal["soft", "hard"]
 VisibilityScope = Literal["owner", "spouse", "shared"]
@@ -9,6 +9,8 @@ Cadence = Literal["daily", "weekly", "monthly"]
 TaskStatus = Literal["staged", "primed", "in_flight", "holding", "mission_complete", "scrubbed"]
 TaskPriority = Literal["core", "major", "minor", "ambient"]
 TaskUrgency = Literal["immediate", "near", "planned", "flexible"]
+
+
 
 
 class VersionResponse(BaseModel):
@@ -50,6 +52,33 @@ class PrioritizedFields(BaseModel):
     spouse_urgency: TaskUrgency | None = None
     spouse_deadline: datetime | None = None
     spouse_deadline_type: DeadlineType | None = None
+
+
+    @field_validator("priority", "spouse_priority", mode="before")
+    @classmethod
+    def normalize_priority(cls, value: object) -> object:
+        if isinstance(value, int):
+            if value >= 8:
+                return "core"
+            if value >= 6:
+                return "major"
+            if value >= 3:
+                return "minor"
+            return "ambient"
+        return value
+
+    @field_validator("urgency", "spouse_urgency", mode="before")
+    @classmethod
+    def normalize_urgency(cls, value: object) -> object:
+        if isinstance(value, int):
+            if value >= 8:
+                return "immediate"
+            if value >= 6:
+                return "near"
+            if value >= 3:
+                return "planned"
+            return "flexible"
+        return value
     is_private: bool = False
     visibility_scope: VisibilityScope = "shared"
 
