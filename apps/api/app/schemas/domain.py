@@ -11,8 +11,6 @@ TaskPriority = Literal["core", "major", "minor", "ambient"]
 TaskUrgency = Literal["immediate", "near", "planned", "flexible"]
 
 
-
-
 class VersionResponse(BaseModel):
     id: str
     entity_type: str
@@ -53,7 +51,6 @@ class PrioritizedFields(BaseModel):
     spouse_deadline: datetime | None = None
     spouse_deadline_type: DeadlineType | None = None
 
-
     @field_validator("priority", "spouse_priority", mode="before")
     @classmethod
     def normalize_priority(cls, value: object) -> object:
@@ -79,6 +76,7 @@ class PrioritizedFields(BaseModel):
                 return "planned"
             return "flexible"
         return value
+
     is_private: bool = False
     visibility_scope: VisibilityScope = "shared"
 
