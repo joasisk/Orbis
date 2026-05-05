@@ -56,7 +56,13 @@ export function formatProposalTaskTitle(taskId: string, taskTitle?: string | nul
 }
 
 export function formatProposalReason(rationale: string): string {
-  if (!rationale || rationale.startsWith("ranked_for_weekly_plan")) return "Suggested because it matches your weekly priorities.";
+  if (!rationale) return "Suggested because it matches your weekly priorities.";
+  if (rationale.startsWith("ranked_for_weekly_plan_priority")) {
+    const priorityMatch = rationale.match(/priority_(\d+)/);
+    if (priorityMatch) return `Suggested because it supports your weekly priorities (#${priorityMatch[1]}).`;
+    return "Suggested because it matches your weekly priorities.";
+  }
+  if (rationale.startsWith("ranked_for_weekly_plan")) return "Suggested because it matches your weekly priorities.";
   const rationaleParts = rationale.split("_");
   return rationaleParts
     .filter(Boolean)
@@ -102,6 +108,7 @@ export function ScheduleDashboard() {
   const [language, setLanguage] = useState<UiLanguage>(DEFAULT_UI_LANGUAGE);
   const [proposal, setProposal] = useState<WeeklyProposal | null>(null);
   const [proposalLoading, setProposalLoading] = useState(false);
+  const [proposalError, setProposalError] = useState("");
   const [noteTitle, setNoteTitle] = useState("");
   const [noteRef, setNoteRef] = useState("");
   const [noteContent, setNoteContent] = useState("");
@@ -152,6 +159,7 @@ export function ScheduleDashboard() {
 
   async function generateProposal() {
     if (!token || proposalLoading) return;
+    setProposalError("");
     setProposalLoading(true);
     const response = await fetch(`${apiBase}/planning/weekly-proposals/generate`, {
       method: "POST",
@@ -160,7 +168,7 @@ export function ScheduleDashboard() {
     });
     setProposalLoading(false);
     if (!response.ok) {
-      setError(`${translate(language, "weeklyProposalError")} (${response.status}).`);
+      setProposalError(`${translate(language, "weeklyProposalError")} (${response.status}).`);
       return;
     }
     setProposal((await response.json()) as WeeklyProposal);
@@ -168,22 +176,27 @@ export function ScheduleDashboard() {
 
   async function loadLatestProposal() {
     if (!token || proposalLoading) return;
+    setProposalError("");
     setProposalLoading(true);
     const response = await fetch(`${apiBase}/planning/weekly-proposals/latest`, { headers: authHeaders(token), cache: "no-store" });
     setProposalLoading(false);
-    if (!response.ok) return;
+    if (!response.ok) {
+      setProposalError(`${translate(language, "weeklyProposalError")} (${response.status}).`);
+      return;
+    }
     setProposal((await response.json()) as WeeklyProposal);
   }
 
   async function approveProposal() {
     if (!token || !proposal) return;
+    setProposalError("");
     const response = await fetch(`${apiBase}/planning/weekly-proposals/${proposal.id}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders(token) },
       body: JSON.stringify({ edits: [] }),
     });
     if (!response.ok) {
-      setError(`${translate(language, "weeklyProposalApproveError")} (${response.status}).`);
+      setProposalError(`${translate(language, "weeklyProposalApproveError")} (${response.status}).`);
       return;
     }
     setProposal((await response.json()) as WeeklyProposal);
@@ -280,6 +293,7 @@ export function ScheduleDashboard() {
             <button className="app-button app-button--ghost" type="button" onClick={loadLatestProposal} disabled={proposalLoading}>{translate(language, "weeklyProposalLoadLatest")}</button>
           </div>
         </section>
+        {proposalError ? <p className="error-text">{proposalError}</p> : null}
         {proposal ? <div className="weekly-proposal-summary"><span>{proposal.items.length} {translate(language, "weeklyProposalSuggestedSessions")}</span><span>{formatDurationSummary(getTotalDurationMinutes(proposal.items))} {translate(language, "weeklyProposalTotal")}</span></div> : null}
         {proposalLoading ? <EmptyState message={translate(language, "weeklyProposalLoading")} /> : null}
         {!proposalLoading && proposal ? (
@@ -289,7 +303,8 @@ export function ScheduleDashboard() {
                 <span className="weekly-proposal-item__day">{formatSuggestedDayLabel(item.suggested_day, item.suggested_date)}</span>
                 <div>
                   <p><strong><Link href={`/tasks/${item.task_id}`}>{formatProposalTaskTitle(item.task_id, item.task_title)}</Link></strong></p>
-                  <p>{formatDurationSummary(item.suggested_minutes)} · {formatProposalReason(item.rationale)}</p>
+                  <p className="weekly-proposal-item__meta">{formatDurationSummary(item.suggested_minutes)}</p>
+                  <p>{formatProposalReason(item.rationale)}</p>
                 </div>
               </article>
             )) : <EmptyState message={translate(language, "weeklyProposalNoItems")} />}
