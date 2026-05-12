@@ -79,6 +79,7 @@ Backups include:
 5. Validate post-deploy:
    - API health endpoints return `200`.
    - owner login works.
+   - Caddy starts from the container-generated `/etc/caddy/Caddyfile`; the TrueNAS Compose path avoids bind-mounting a repository Caddyfile so CI-generated deploy artifacts work without sidecar files.
    - backup + restore scripts run successfully in staging.
 
 ## 5) Verification checklist

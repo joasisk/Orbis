@@ -4,8 +4,19 @@ services:
     restart: unless-stopped
     ports:
       - "8080:80"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cat > /etc/caddy/Caddyfile <<'EOF'
+        :80 {
+          @api path /api/*
+
+          reverse_proxy @api api:8000
+          reverse_proxy web:3000
+        }
+        EOF
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     volumes:
-      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - /mnt/YOUR_POOL/apps/orbis/caddy/data:/data
       - /mnt/YOUR_POOL/apps/orbis/caddy/config:/config
     depends_on:

@@ -49,6 +49,8 @@ The Docker publish workflow now uploads a `truenas-deploy-<git-sha>` artifact th
 
 This artifact pins `web`, `api`, and `worker` images to immutable SHA tags for that publish. Using it in TrueNAS avoids `latest` tag cache ambiguity and makes app updates deterministic.
 
+The TrueNAS Compose file intentionally renders the small Caddy configuration inside the Caddy container at startup instead of bind-mounting `infra/caddy/Caddyfile`. TrueNAS custom-app render directories may omit repository sidecar files from CI artifacts; avoiding the file bind prevents Docker from creating a host directory at the file path and failing with a "not a directory" mount error.
+
 ## 4) Why the proxy URL matters
 - `localhost` in browser JavaScript always means the **end user's machine**, not the TrueNAS host.
 - A hardcoded browser URL such as `http://localhost:8000/api/v1` fails for remote users because their own laptop/desktop usually has nothing listening on port `8000`.
@@ -99,7 +101,10 @@ Useful references:
   - Confirm persistent volume mounts are writable.
 - API unavailable behind proxy:
   - Confirm proxy-to-api upstream networking and service names mirror Compose expectations.
-  - Confirm `infra/caddy/Caddyfile` is mounted into the Caddy container.
+  - Confirm the Caddy container logs show it started with `/etc/caddy/Caddyfile`; the TrueNAS Compose file writes this file at container startup and does not require a host-side Caddyfile bind mount.
+- Image pull failures from GHCR:
+  - Confirm the TrueNAS host can reach `ghcr.io` over HTTPS and that no firewall, DNS, proxy, or temporary upstream outage is blocking GitHub Container Registry token requests.
+  - Retry after connectivity is restored; the app cannot start until `api`, `worker`, and `web` images pull successfully.
 - Login failures after redeploy:
   - Verify `API_SECRET_KEY` has not changed unexpectedly.
   - Verify database credentials still match persisted DB state.
